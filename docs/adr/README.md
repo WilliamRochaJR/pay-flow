@@ -12,3 +12,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0006 — Front-end organizado por funcionalidades](0006-feature-based-frontend.md)
 - [ADR-0007 — Verificações locais rápidas e CI completa](0007-local-quality-gates-and-ci.md)
 - [ADR-0008 — GitHub Flow para desenvolvimento](0008-github-flow.md)
+- [ADR-0009 — Cobertura e SonarQube como Quality Gate](0009-coverage-and-sonarqube-quality-gate.md)
