@@ -11,6 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "check": "npm run format:check && npm run typecheck && npm run lint && npm run test:coverage && npm run build",
     "test:e2e": "playwright test",
     "test:e2e:local": "docker compose -f ../compose.yaml up --build --wait && playwright test"
   },
@@ -29,6 +31,7 @@
     "@types/node": "26.2.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "9.39.2",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.4",

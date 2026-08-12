@@ -44,8 +44,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Upload front-end coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
 
       - name: Build
         run: npm run build
@@ -70,6 +77,57 @@ jobs:
 
       - name: Test and package
         run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Upload back-end coverage and bytecode
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-analysis
+          path: |
+            backend/target/classes/
+            backend/target/site/jacoco/jacoco.xml
+          retention-days: 7
+
+  sonar:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.fork == false }}
+
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download front-end coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+      - name: Download back-end analysis files
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-analysis
+          path: backend/target
+
+      - name: Validate SonarQube configuration
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          test -n "$SONAR_TOKEN" || { echo "Configure the SONAR_TOKEN repository secret."; exit 1; }
+          test -n "$SONAR_HOST_URL" || { echo "Configure the SONAR_HOST_URL repository variable."; exit 1; }
+
+      - name: Analyze and wait for Quality Gate
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          args: >-
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
 
   e2e:
     name: E2E

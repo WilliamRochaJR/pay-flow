@@ -46,11 +46,11 @@ cd frontend && npm install && npm run dev
 Testes e verificações:
 
 ```bash
-cd backend && mvn test
-cd frontend && npm test && npm run lint && npm run build
+npm run check
+npm run check:e2e
 ```
 
-Os testes de integração do back-end usam Testcontainers e, portanto, precisam do Docker ativo.
+`check` executa formatação, tipos, lint, cobertura, testes e builds do front e `mvn verify` no back. `check:e2e` reconstrói a aplicação completa e executa o fluxo Playwright. Os testes de integração e E2E precisam do Docker ativo.
 
 ## Primeiro produto publicável
 

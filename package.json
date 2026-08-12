@@ -6,7 +6,11 @@
   "scripts": {
     "prepare": "husky",
     "lint-staged": "lint-staged",
-    "commitlint": "commitlint --edit"
+    "commitlint": "commitlint --edit",
+    "check:frontend": "npm --prefix frontend run check",
+    "check:backend": "cd backend && mvn --batch-mode --no-transfer-progress verify",
+    "check": "npm run check:frontend && npm run check:backend",
+    "check:e2e": "npm --prefix frontend run test:e2e:local"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
