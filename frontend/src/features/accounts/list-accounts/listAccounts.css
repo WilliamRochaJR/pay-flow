@@ -1,0 +1,65 @@
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.account-card {
+  padding: 20px;
+  border: 1px solid #dfe3da;
+  border-radius: 14px;
+  background: #fafbf8;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+}
+.avatar {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font: 700 15px 'Manrope';
+}
+.avatar-1 {
+  color: #63513b;
+  background: #eee1cd;
+}
+.avatar-2 {
+  color: #465474;
+  background: #dce3f0;
+}
+.avatar-3 {
+  color: #536946;
+  background: #dfead7;
+}
+.account-person strong,
+.account-person span,
+.account-balance span,
+.account-balance strong {
+  display: block;
+}
+.account-person strong {
+  font-size: 15px;
+}
+.account-person span,
+.account-balance span {
+  color: #86908b;
+  font-size: 11px;
+  margin-top: 3px;
+}
+.account-balance {
+  grid-column: 1 / -1;
+  margin-top: 15px;
+  padding-top: 16px;
+  border-top: 1px solid #e7e9e3;
+}
+.account-balance strong {
+  font: 700 24px 'Manrope';
+  margin-top: 5px;
+}
+
+@media (max-width: 800px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,142 @@
+.app-shell {
+  min-height: 100vh;
+}
+.topbar {
+  height: 76px;
+  padding: 0 max(24px, calc((100% - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #dfe3d9;
+  background: rgba(250, 251, 247, 0.9);
+}
+.brand {
+  color: #17251f;
+  text-decoration: none;
+  font: 800 21px 'Manrope';
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #1d5f46;
+  color: white;
+}
+.environment {
+  padding: 8px 12px;
+  background: #e8eee8;
+  color: #466157;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.environment i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #32a56d;
+  margin-right: 7px;
+}
+main {
+  max-width: 1180px;
+  margin: auto;
+  padding: 54px 24px 70px;
+}
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  align-items: end;
+  margin-bottom: 52px;
+}
+h1 {
+  font-size: clamp(38px, 5vw, 60px);
+  letter-spacing: -0.055em;
+  line-height: 1.03;
+  max-width: 650px;
+  margin: 12px 0 16px;
+}
+.hero p {
+  color: #68736d;
+  font-size: 17px;
+  margin: 0;
+}
+.total-card {
+  min-width: 310px;
+  background: #193f31;
+  color: white;
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 50px rgba(24, 63, 48, 0.14);
+}
+.total-card span,
+.total-card small {
+  display: block;
+  color: #b9cdc4;
+}
+.total-card strong {
+  display: block;
+  font: 700 30px 'Manrope';
+  margin: 7px 0;
+}
+.total-card small {
+  font-size: 11px;
+}
+.message {
+  margin: -25px 0 30px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.message.error {
+  color: #8f2c2c;
+  background: #fdebea;
+}
+.message.success {
+  color: #1d6c45;
+  background: #e2f5e9;
+}
+footer {
+  border-top: 1px solid #dfe3d9;
+  padding: 25px;
+  color: #8a928e;
+  text-align: center;
+  font-size: 12px;
+}
+.center-state {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #50645b;
+}
+
+@media (max-width: 800px) {
+  .hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .total-card {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 38px 16px 55px;
+  }
+  .topbar {
+    padding: 0 16px;
+  }
+  .environment {
+    font-size: 0;
+  }
+  .environment i {
+    margin: 0;
+  }
+}
