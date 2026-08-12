@@ -22,7 +22,7 @@ Pré-requisito: Docker com Compose.
 docker compose up --build
 ```
 
-Acesse <http://localhost:5173>. A API fica em <http://localhost:8080/api/v1> e seu health check em <http://localhost:8080/actuator/health>.
+Acesse <http://localhost:5173>. A API fica em <http://localhost:8080/api/v1>, a documentação interativa em <http://localhost:8080/swagger-ui.html> e o health check em <http://localhost:8080/actuator/health>.
 
 Para encerrar, execute `docker compose down`. Os dados permanecem no volume `payflow-data`. Para também apagar os dados fictícios e recriar o seed, execute `docker compose down -v`.
 
@@ -67,6 +67,7 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 
 - [Plano de entrega](docs/plan.md)
 - [Arquitetura](docs/architecture.md)
+- [Modelo de classes](docs/domain-model.md)
 - [Contrato inicial da API](docs/api.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 

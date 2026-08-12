@@ -1,6 +1,8 @@
 package com.payflow.transfers;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +17,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/transfers")
+@Tag(name = "Transferências", description = "Criação e consulta de transferências fictícias")
 public class TransferController {
 
     private final TransferService service;
@@ -24,6 +27,7 @@ public class TransferController {
     }
 
     @PostMapping
+    @Operation(summary = "Criar uma transferência")
     ResponseEntity<TransferResponse> create(@Valid @RequestBody CreateTransferRequest request) {
         TransferResponse response = service.create(request);
         var location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
@@ -32,11 +36,13 @@ public class TransferController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar transferências")
     List<TransferResponse> list() {
         return service.list();
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Consultar uma transferência pelo identificador")
     TransferResponse find(@PathVariable UUID id) {
         return service.find(id);
     }

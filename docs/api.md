@@ -2,6 +2,18 @@
 
 Prefixo: `/api/v1`.
 
+## Documentação interativa
+
+Com a API em execução:
+
+```text
+Swagger UI: http://localhost:8080/swagger-ui.html
+OpenAPI JSON: http://localhost:8080/v3/api-docs
+OpenAPI YAML: http://localhost:8080/v3/api-docs.yaml
+```
+
+O Swagger UI permite consultar e experimentar o contrato HTTP pelo navegador. A especificação OpenAPI é gerada a partir dos controllers, DTOs e anotações do código.
+
 ## M0 local
 
 ### Contas
