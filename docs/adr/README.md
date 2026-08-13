@@ -18,3 +18,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0012 — Autorização por propriedade do recurso](0012-resource-ownership-authorization.md)
 - [ADR-0013 — Mesma origem e CORS explícito por ambiente](0013-same-origin-and-explicit-cors.md)
 - [ADR-0014 — Roteamento explícito no front-end](0014-client-side-routing.md)
+- [ADR-0015 — Idempotência na criação de transferências](0015-transfer-idempotency.md)

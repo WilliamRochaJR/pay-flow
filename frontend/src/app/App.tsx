@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthForm } from '../features/auth/components/AuthForm'
 import { authenticate } from '../features/auth/auth.service'
@@ -34,6 +34,7 @@ function AppRoutes() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const pendingTransfer = useRef<{ fingerprint: string; key: string } | null>(null)
 
   const loadDashboard = useCallback(async () => {
     if (!accessToken) return
@@ -110,7 +111,12 @@ function AppRoutes() {
     setSuccess('')
     setSubmitting(true)
     try {
-      await createTransfer(input, accessToken)
+      const fingerprint = JSON.stringify(input)
+      if (pendingTransfer.current?.fingerprint !== fingerprint) {
+        pendingTransfer.current = { fingerprint, key: crypto.randomUUID() }
+      }
+      await createTransfer(input, pendingTransfer.current.key, accessToken)
+      pendingTransfer.current = null
       setSuccess('Transferência concluída com sucesso.')
       await loadDashboard()
       return true

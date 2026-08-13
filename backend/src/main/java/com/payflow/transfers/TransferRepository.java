@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TransferRepository extends JpaRepository<Transfer, UUID> {
+    java.util.Optional<Transfer> findByOwnerIdAndIdempotencyKey(UUID ownerId, UUID idempotencyKey);
+
     @org.springframework.data.jpa.repository.Query("""
             select t from Transfer t
             where t.sourceAccountId in (select a.id from Account a where a.ownerId = :ownerId)
