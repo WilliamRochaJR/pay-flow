@@ -14,3 +14,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0008 — GitHub Flow para desenvolvimento](0008-github-flow.md)
 - [ADR-0009 — Cobertura e SonarQube como Quality Gate](0009-coverage-and-sonarqube-quality-gate.md)
 - [ADR-0010 — OpenAPI gerado a partir do código](0010-openapi-generated-from-code.md)
+- [ADR-0011 — Autenticação stateless com JWT](0011-stateless-jwt-authentication.md)

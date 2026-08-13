@@ -71,6 +71,25 @@ classDiagram
         +find(id) TransferResponse
     }
 
+    class User {
+        -UUID id
+        -String name
+        -String email
+        -String passwordHash
+        -Instant createdAt
+        +register(name, email, passwordHash) User
+    }
+
+    class AuthService {
+        +register(request) UserResponse
+        +login(request) TokenResponse
+        +findById(subject) UserResponse
+    }
+
+    class TokenService {
+        +issue(user) TokenResponse
+    }
+
     Account "1" --> "0..*" Transfer : origem de
     Account "1" --> "0..*" Transfer : destino de
     AccountResponse "1" ..> "1" Account : converte uma
@@ -81,6 +100,9 @@ classDiagram
     TransferService ..> TransferResponse : devolve
     TransferService ..> Account : debita e credita
     TransferService ..> Transfer : cria e persiste
+    AuthService ..> User : cadastra e consulta
+    AuthService ..> TokenService : solicita token
+    TokenService ..> User : usa identidade
 ```
 
 ### Legenda das cardinalidades e relacionamentos
@@ -107,7 +129,7 @@ As dependências do `TransferService` não recebem cardinalidade porque represen
 
 ## Entidades persistidas
 
-`Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas tabelas `accounts` e `transfers`.
+`User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas tabelas `users`, `accounts` e `transfers`.
 
 ```mermaid
 erDiagram
@@ -120,6 +142,14 @@ erDiagram
         VARCHAR currency
         NUMERIC balance
         BIGINT version
+    }
+
+    USERS {
+        UUID id PK
+        VARCHAR name
+        VARCHAR email UK
+        VARCHAR password_hash
+        TIMESTAMPTZ created_at
     }
 
     TRANSFERS {
@@ -146,6 +176,9 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 | `AccountResponse`       | DTO de saída         | expor uma conta sem devolver diretamente a entidade JPA        |
 | `TransferResponse`      | DTO de saída         | expor uma transferência no contrato HTTP                       |
 | `TransferService`       | serviço de aplicação | coordenar validações, débito, crédito e persistência atômica   |
+| `User`                  | entidade JPA         | armazenar identidade, e-mail normalizado e hash da senha       |
+| `AuthService`           | serviço de aplicação | coordenar cadastro, login e consulta do usuário                |
+| `TokenService`          | serviço de segurança | emitir access token JWT com validade curta                     |
 
 DTO significa **Data Transfer Object**: objeto usado para transportar dados entre a API e seus consumidores. Separar DTOs das entidades impede que mudanças internas do banco alterem acidentalmente o contrato HTTP.
 
@@ -188,4 +221,4 @@ O método do serviço é transacional: débito, crédito e criação da transfer
 
 ## Evolução planejada
 
-O modelo acima mostra somente o que existe no código. `User`, autenticação, chave de idempotência e estorno pertencem aos próximos passos do M1 e devem ser adicionados a este diagrama apenas quando forem implementados.
+O modelo acima mostra somente o que existe no código. A associação entre `User` e `Account`, a chave de idempotência e o estorno pertencem aos próximos passos do M1 e devem ser adicionados ao diagrama apenas quando forem implementados.

@@ -1,5 +1,6 @@
 package com.payflow;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +33,7 @@ class TransferApiIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("app.jwt.secret", () -> "cGF5Zmxvdy10ZXN0LWp3dC1zZWNyZXQta2V5LTMyLWJ5dGVz");
     }
 
     @Autowired
@@ -90,10 +92,78 @@ class TransferApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("PayFlow API"))
                 .andExpect(jsonPath("$.info.version").value("v1"))
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/accounts']").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/transfers'].post").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/transfers'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/me'].get.security[0].bearerAuth").exists());
 
         mvc.perform(get("/swagger-ui.html"))
                 .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void registersLogsInAndReturnsAuthenticatedUser() throws Exception {
+        String email = "william@example.com";
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "William Rocha",
+                                  "email": "WILLIAM@example.com",
+                                  "password": "safe-password"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("William Rocha"))
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Outro nome",
+                                  "email": "william@example.com",
+                                  "password": "another-password"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Este e-mail já está cadastrado."));
+
+        String loginResponse = mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "william@example.com",
+                                  "password": "safe-password"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(900))
+                .andReturn().getResponse().getContentAsString();
+
+        String accessToken = JsonPath.read(loginResponse, "$.accessToken");
+        mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("William Rocha"))
+                .andExpect(jsonPath("$.email").value(email));
+    }
+
+    @Test
+    void rejectsUnauthenticatedMeAndInvalidCredentials() throws Exception {
+        mvc.perform(get("/api/v1/me"))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "missing@example.com",
+                                  "password": "wrong-password"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("E-mail ou senha inválidos."));
     }
 }

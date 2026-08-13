@@ -15,8 +15,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     ProblemDetail handleBusiness(BusinessException exception) {
-        HttpStatus status = exception.getCode().equals("insufficient-balance")
-                ? HttpStatus.UNPROCESSABLE_CONTENT : HttpStatus.BAD_REQUEST;
+        HttpStatus status = switch (exception.getCode()) {
+            case "insufficient-balance" -> HttpStatus.UNPROCESSABLE_CONTENT;
+            case "email-already-registered" -> HttpStatus.CONFLICT;
+            case "invalid-credentials" -> HttpStatus.UNAUTHORIZED;
+            default -> HttpStatus.BAD_REQUEST;
+        };
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, exception.getMessage());
         problem.setTitle("Regra de negócio não atendida");
         problem.setType(URI.create("https://payflow.dev/problems/" + exception.getCode()));
