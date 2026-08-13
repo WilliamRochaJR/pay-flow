@@ -25,6 +25,7 @@ services:
       JWT_SECRET: cGF5Zmxvdy1sb2NhbC1kZXZlbG9wbWVudC1zZWNyZXQta2V5
       LOG_STRUCTURED_FORMAT: logstash
       LOG_LEVEL: INFO
+      RATE_LIMIT_TRUST_FORWARDED_HEADERS: "false"
     ports:
       - "8080:8080"
     depends_on:

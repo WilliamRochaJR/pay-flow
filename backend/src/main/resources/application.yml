@@ -40,6 +40,12 @@ logging:
     format:
       console: ${LOG_STRUCTURED_FORMAT:logstash}
 app:
+  rate-limit:
+    login: ${RATE_LIMIT_LOGIN:10}
+    registration: ${RATE_LIMIT_REGISTRATION:5}
+    transfer: ${RATE_LIMIT_TRANSFER:30}
+    window: ${RATE_LIMIT_WINDOW:1m}
+    trust-forwarded-headers: ${RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
   jwt:
     issuer: ${JWT_ISSUER:payflow-api}
     secret: ${JWT_SECRET}

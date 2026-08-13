@@ -20,3 +20,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0014 — Roteamento explícito no front-end](0014-client-side-routing.md)
 - [ADR-0015 — Idempotência na criação de transferências](0015-transfer-idempotency.md)
 - [ADR-0016 — Logs estruturados e correlação HTTP](0016-structured-logging-and-correlation.md)
+- [ADR-0017 — Rate limiting em memória no primeiro deploy](0017-in-memory-rate-limiting.md)

@@ -136,4 +136,11 @@ sempre devolve o identificador no mesmo header. Erros de negócio e validação 
 `correlationId` no corpo `application/problem+json`. Esse valor pode ser informado ao suporte para
 localizar a requisição nos logs, mas não concede acesso a nenhum recurso.
 
+## Limite de requisições
+
+Login e cadastro possuem limite por IP; transferências possuem limite por usuário autenticado. Ao
+exceder o limite, a API retorna `429 Too Many Requests`, um `ProblemDetail` com `correlationId` e o
+header `Retry-After`, indicando quantos segundos aguardar. Os limites são uma proteção operacional e
+não alteram as regras de autorização.
+
 Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro histórico; estorno será um novo caso de uso futuro.

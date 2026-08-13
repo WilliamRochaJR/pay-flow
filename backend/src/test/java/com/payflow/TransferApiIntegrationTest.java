@@ -23,7 +23,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.UUID;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.rate-limit.login=1000",
+        "app.rate-limit.registration=1000",
+        "app.rate-limit.transfer=1000"
+})
 @AutoConfigureMockMvc
 @Testcontainers
 class TransferApiIntegrationTest {
