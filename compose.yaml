@@ -22,6 +22,7 @@ services:
       DB_USER: payflow
       DB_PASSWORD: payflow
       APP_CORS_ALLOWED_ORIGIN: http://localhost:5173
+      JWT_SECRET: cGF5Zmxvdy1sb2NhbC1kZXZlbG9wbWVudC1zZWNyZXQta2V5
     ports:
       - "8080:8080"
     depends_on:

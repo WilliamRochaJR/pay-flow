@@ -28,3 +28,8 @@ management:
     health:
       probes:
         enabled: true
+app:
+  jwt:
+    issuer: ${JWT_ISSUER:payflow-api}
+    secret: ${JWT_SECRET}
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
