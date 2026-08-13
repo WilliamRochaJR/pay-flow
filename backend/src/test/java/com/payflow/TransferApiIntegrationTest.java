@@ -14,6 +14,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -41,49 +43,57 @@ class TransferApiIntegrationTest {
 
     @Test
     void completesTransferAndUpdatesBalances() throws Exception {
+        String token = registerAndLogin("transfer@example.com", "Transfer User");
+        java.util.List<String> accountIds = accountIds(token);
+        String sourceId = accountIds.get(0);
+        String destinationId = accountIds.get(1);
+
         mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "sourceAccountId": "5b99802c-24c0-4462-8260-6317a984da20",
-                                  "destinationAccountId": "565620a5-e66d-48c9-8ff2-39aa22ace194",
-                                  "amount": 350.00,
-                                  "currency": "BRL"
-                                }
-                                """))
+                        .content(transferJson(sourceId, destinationId, "350.00")))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
-        mvc.perform(get("/api/v1/accounts/5b99802c-24c0-4462-8260-6317a984da20"))
+        mvc.perform(get("/api/v1/accounts/" + sourceId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(2150.00));
-        mvc.perform(get("/api/v1/accounts/565620a5-e66d-48c9-8ff2-39aa22ace194"))
+        mvc.perform(get("/api/v1/accounts/" + destinationId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(2150.00));
+                .andExpect(jsonPath("$.balance").value(1350.00));
     }
 
     @Test
     void rejectsInsufficientBalanceWithoutPersistingTransfer() throws Exception {
+        String token = registerAndLogin("insufficient@example.com", "Insufficient User");
+        java.util.List<String> accountIds = accountIds(token);
         mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "sourceAccountId": "5b99802c-24c0-4462-8260-6317a984da20",
-                                  "destinationAccountId": "565620a5-e66d-48c9-8ff2-39aa22ace194",
-                                  "amount": 999999.00,
-                                  "currency": "BRL"
-                                }
-                                """))
+                        .content(transferJson(accountIds.get(0), accountIds.get(1), "999999.00")))
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.detail").value("Saldo insuficiente para realizar a transferência."));
     }
 
     @Test
-    void listsSeededAccounts() throws Exception {
-        mvc.perform(get("/api/v1/accounts"))
+    void listsOnlyAuthenticatedUsersAccounts() throws Exception {
+        String token = registerAndLogin("owner@example.com", "Owner User");
+        mvc.perform(get("/api/v1/accounts").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)));
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].holderName", everyItem(startsWith("Owner User"))));
+
+        mvc.perform(get("/api/v1/accounts/5b99802c-24c0-4462-8260-6317a984da20")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+
+        String ownAccount = accountIds(token).get(0);
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson("5b99802c-24c0-4462-8260-6317a984da20", ownAccount, "10.00")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -154,6 +164,10 @@ class TransferApiIntegrationTest {
     void rejectsUnauthenticatedMeAndInvalidCredentials() throws Exception {
         mvc.perform(get("/api/v1/me"))
                 .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/accounts"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/transfers"))
+                .andExpect(status().isUnauthorized());
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -165,5 +179,35 @@ class TransferApiIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("E-mail ou senha inválidos."));
+    }
+
+    private String registerAndLogin(String email, String name) throws Exception {
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"%s","email":"%s","password":"safe-password"}
+                                """.formatted(name, email)))
+                .andExpect(status().isCreated());
+        String response = mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"safe-password"}
+                                """.formatted(email)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.accessToken");
+    }
+
+    private java.util.List<String> accountIds(String token) throws Exception {
+        String response = mvc.perform(get("/api/v1/accounts").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$[*].id");
+    }
+
+    private String transferJson(String sourceId, String destinationId, String amount) {
+        return """
+                {"sourceAccountId":"%s","destinationAccountId":"%s","amount":%s,"currency":"BRL"}
+                """.formatted(sourceId, destinationId, amount);
     }
 }

@@ -14,7 +14,7 @@ A primeira versão pública será um **monólito modular**, executado com Docker
 
 O primeiro fluxo vertical já inclui contas fictícias, transferência atômica, atualização de saldos e histórico.
 
-O back-end também oferece cadastro, login com senha protegida por BCrypt e um endpoint autenticado por JWT. A integração dessa autenticação à interface e a propriedade das contas entram no próximo incremento.
+O fluxo inclui cadastro e login no React, senha protegida por BCrypt, autenticação JWT e contas isoladas por usuário. O token permanece somente em memória e é descartado ao sair ou atualizar a página.
 
 ### Executar tudo com Docker
 

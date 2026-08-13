@@ -10,6 +10,7 @@ classDiagram
 
     class Account {
         -UUID id
+        -UUID ownerId
         -String holderName
         -String currency
         -BigDecimal balance
@@ -90,6 +91,7 @@ classDiagram
         +issue(user) TokenResponse
     }
 
+    User "1" --> "0..*" Account : possui
     Account "1" --> "0..*" Transfer : origem de
     Account "1" --> "0..*" Transfer : destino de
     AccountResponse "1" ..> "1" Account : converte uma
@@ -133,11 +135,13 @@ As dependências do `TransferService` não recebem cardinalidade porque represen
 
 ```mermaid
 erDiagram
+    USERS ||--|{ ACCOUNTS : possui
     ACCOUNTS ||--o{ TRANSFERS : "conta de origem"
     ACCOUNTS ||--o{ TRANSFERS : "conta de destino"
 
     ACCOUNTS {
         UUID id PK
+        UUID owner_id FK
         VARCHAR holder_name
         VARCHAR currency
         NUMERIC balance
@@ -221,4 +225,4 @@ O método do serviço é transacional: débito, crédito e criação da transfer
 
 ## Evolução planejada
 
-O modelo acima mostra somente o que existe no código. A associação entre `User` e `Account`, a chave de idempotência e o estorno pertencem aos próximos passos do M1 e devem ser adicionados ao diagrama apenas quando forem implementados.
+O modelo acima mostra somente o que existe no código. A chave de idempotência e o estorno pertencem aos próximos passos do M1 e devem ser adicionados ao diagrama apenas quando forem implementados.

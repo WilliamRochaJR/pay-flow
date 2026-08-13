@@ -26,7 +26,7 @@ public class TransferService {
     }
 
     @Transactional
-    public TransferResponse create(CreateTransferRequest request) {
+    public TransferResponse create(CreateTransferRequest request, UUID ownerId) {
         if (request.sourceAccountId().equals(request.destinationAccountId())) {
             throw new BusinessException("same-account", "As contas de origem e destino devem ser diferentes.");
         }
@@ -42,6 +42,9 @@ public class TransferService {
                 .collect(Collectors.toMap(Account::getId, Function.identity()));
         Account source = byId.get(request.sourceAccountId());
         Account destination = byId.get(request.destinationAccountId());
+        if (!source.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Conta de origem ou destino não encontrada.");
+        }
         String requestedCurrency = request.currency().toUpperCase();
 
         if (!source.getCurrency().equals(destination.getCurrency())
@@ -58,13 +61,13 @@ public class TransferService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransferResponse> list() {
-        return transferRepository.findAllByOrderByCreatedAtDesc().stream().map(TransferResponse::from).toList();
+    public List<TransferResponse> list(UUID ownerId) {
+        return transferRepository.findVisibleTo(ownerId).stream().map(TransferResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public TransferResponse find(UUID id) {
-        return transferRepository.findById(id)
+    public TransferResponse find(UUID id, UUID ownerId) {
+        return transferRepository.findVisibleById(id, ownerId)
                 .map(TransferResponse::from)
                 .orElseThrow(() -> new ResourceNotFoundException("Transferência não encontrada."));
     }

@@ -27,7 +27,7 @@ describe('createTransfer', () => {
     const transfer = { id: 'transfer-1' } as Transfer
     const sender = vi.fn().mockResolvedValue(transfer)
 
-    await expect(createTransfer(validInput, sender)).resolves.toBe(transfer)
+    await expect(createTransfer(validInput, undefined, sender)).resolves.toBe(transfer)
     expect(sender).toHaveBeenCalledWith(validInput)
   })
 })
