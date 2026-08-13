@@ -160,6 +160,31 @@ class TransferApiIntegrationTest {
     }
 
     @Test
+    void generatesAndPropagatesCorrelationId() throws Exception {
+        String suppliedCorrelationId = UUID.randomUUID().toString();
+
+        mvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Correlation-ID", org.hamcrest.Matchers.matchesPattern(
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")));
+
+        mvc.perform(post("/api/v1/auth/register")
+                        .header("X-Correlation-ID", suppliedCorrelationId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"","email":"invalid","password":"short"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("X-Correlation-ID", suppliedCorrelationId))
+                .andExpect(jsonPath("$.correlationId").value(suppliedCorrelationId));
+
+        mvc.perform(get("/actuator/health").header("X-Correlation-ID", "invalid log value\nforged"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Correlation-ID",
+                        org.hamcrest.Matchers.not("invalid log value\nforged")));
+    }
+
+    @Test
     void publishesOpenApiContractAndSwaggerUi() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
@@ -169,6 +194,8 @@ class TransferApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/accounts']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'Idempotency-Key')]")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'X-Correlation-ID')]")
                         .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/me'].get.security[0].bearerAuth").exists());
 

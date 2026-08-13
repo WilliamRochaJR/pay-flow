@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.customizers.OperationCustomizer;
 
 @Configuration
 public class OpenApiConfig {
@@ -21,5 +22,17 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")));
+    }
+
+    @Bean
+    OperationCustomizer correlationIdHeader() {
+        return (operation, handlerMethod) -> operation.addParametersItem(
+                new io.swagger.v3.oas.models.parameters.Parameter()
+                        .in("header")
+                        .name(CorrelationIdFilter.HEADER_NAME)
+                        .required(false)
+                        .description("UUID opcional para correlacionar requisição, resposta e logs")
+                        .schema(new io.swagger.v3.oas.models.media.StringSchema().format("uuid"))
+        );
     }
 }

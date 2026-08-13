@@ -129,4 +129,11 @@ Usar `application/problem+json` (Problem Details), com `type`, `title`, `status`
 
 Status principais: `400` entrada inválida, `401` não autenticado, `403` sem acesso ao recurso, `404` inexistente, `409` conflito/idempotência e `422` saldo insuficiente.
 
+## Correlação de requisições
+
+O cliente pode enviar `X-Correlation-ID: <uuid>`. A API preserva UUIDs válidos ou gera um novo e
+sempre devolve o identificador no mesmo header. Erros de negócio e validação tratados também incluem
+`correlationId` no corpo `application/problem+json`. Esse valor pode ser informado ao suporte para
+localizar a requisição nos logs, mas não concede acesso a nenhum recurso.
+
 Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro histórico; estorno será um novo caso de uso futuro.

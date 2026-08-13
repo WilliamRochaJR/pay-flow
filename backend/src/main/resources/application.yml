@@ -15,6 +15,9 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  mvc:
+    log-request-details: false
+debug: false
 server:
   port: ${SERVER_PORT:8080}
   error:
@@ -28,6 +31,14 @@ management:
     health:
       probes:
         enabled: true
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
+  structured:
+    format:
+      console: ${LOG_STRUCTURED_FORMAT:logstash}
 app:
   jwt:
     issuer: ${JWT_ISSUER:payflow-api}
