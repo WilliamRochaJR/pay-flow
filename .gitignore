@@ -16,3 +16,16 @@ frontend/*.tsbuildinfo
 .env
 .env.*
 !.env.example
+
+# Terraform: estado, planos e valores locais nunca devem ser versionados.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

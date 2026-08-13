@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install --yes docker.io docker-compose-v2
+systemctl enable --now docker
+
+install --directory --owner=ubuntu --group=ubuntu --mode=0750 /opt/${project_name}
+usermod --append --groups docker ubuntu

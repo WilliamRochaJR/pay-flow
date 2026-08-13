@@ -18,6 +18,11 @@ React estático     Spring Boot API
 
 No desenvolvimento, os mesmos componentes são iniciados por Docker Compose. No primeiro deploy, ficam em uma única instância para reduzir custo, quantidade de recursos e esforço operacional. Containers e módulos mantêm caminhos de evolução sem prometer escalabilidade que a POC ainda não precisa.
 
+A fundação AWS é descrita em Terraform: VPC, subnet pública, Security Group, EC2, Elastic IP,
+identidade da instância e bucket privado de backup. O state fica em um bucket S3 de bootstrap,
+separado do ciclo de vida da aplicação. A CI valida a configuração, mas não executa `apply` em Pull
+Requests.
+
 ## Módulos do back-end
 
 ```text
