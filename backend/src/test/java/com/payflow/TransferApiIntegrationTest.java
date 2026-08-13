@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.UUID;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,6 +51,7 @@ class TransferApiIntegrationTest {
 
         mvc.perform(post("/api/v1/transfers")
                         .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(transferJson(sourceId, destinationId, "350.00")))
                 .andExpect(status().isCreated())
@@ -70,6 +72,7 @@ class TransferApiIntegrationTest {
         java.util.List<String> accountIds = accountIds(token);
         mvc.perform(post("/api/v1/transfers")
                         .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(transferJson(accountIds.get(0), accountIds.get(1), "999999.00")))
                 .andExpect(status().isUnprocessableContent())
@@ -91,9 +94,69 @@ class TransferApiIntegrationTest {
         String ownAccount = accountIds(token).get(0);
         mvc.perform(post("/api/v1/transfers")
                         .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(transferJson("5b99802c-24c0-4462-8260-6317a984da20", ownAccount, "10.00")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void replaysSameTransferAndRejectsDifferentPayloadForSameKey() throws Exception {
+        String token = registerAndLogin("idempotency@example.com", "Idempotency User");
+        java.util.List<String> accounts = accountIds(token);
+        UUID key = UUID.randomUUID();
+        String request = transferJson(accounts.get(0), accounts.get(1), "100.00");
+
+        String firstResponse = mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String replayResponse = mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(replayResponse, "$.id"))
+                .isEqualTo(JsonPath.read(firstResponse, "$.id"));
+        mvc.perform(get("/api/v1/accounts/" + accounts.get(0)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.balance").value(2400.00));
+
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(accounts.get(0), accounts.get(1), "101.00")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail")
+                        .value("A Idempotency-Key já foi utilizada com dados diferentes."));
+
+        String otherToken = registerAndLogin("other-idempotency@example.com", "Other User");
+        java.util.List<String> otherAccounts = accountIds(otherToken);
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + otherToken)
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(otherAccounts.get(0), otherAccounts.get(1), "25.00")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void requiresIdempotencyKeyToCreateTransfer() throws Exception {
+        String token = registerAndLogin("missing-key@example.com", "Missing Key User");
+        java.util.List<String> accounts = accountIds(token);
+
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(accounts.get(0), accounts.get(1), "10.00")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -105,6 +168,8 @@ class TransferApiIntegrationTest {
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/accounts']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'Idempotency-Key')]")
+                        .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/me'].get.security[0].bearerAuth").exists());
 
         mvc.perform(get("/swagger-ui.html"))

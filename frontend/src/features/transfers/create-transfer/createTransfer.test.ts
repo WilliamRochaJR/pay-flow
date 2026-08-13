@@ -12,13 +12,13 @@ const validInput: CreateTransferInput = {
 
 describe('createTransfer', () => {
   it('rejects equal source and destination accounts', () => {
-    expect(() => createTransfer({ ...validInput, destinationAccountId: 'account-1' })).toThrow(
-      'As contas de origem e destino devem ser diferentes.',
-    )
+    expect(() =>
+      createTransfer({ ...validInput, destinationAccountId: 'account-1' }, 'key-1'),
+    ).toThrow('As contas de origem e destino devem ser diferentes.')
   })
 
   it('rejects an amount that is not positive', () => {
-    expect(() => createTransfer({ ...validInput, amount: 0 })).toThrow(
+    expect(() => createTransfer({ ...validInput, amount: 0 }, 'key-1')).toThrow(
       'O valor da transferência deve ser maior que zero.',
     )
   })
@@ -27,7 +27,7 @@ describe('createTransfer', () => {
     const transfer = { id: 'transfer-1' } as Transfer
     const sender = vi.fn().mockResolvedValue(transfer)
 
-    await expect(createTransfer(validInput, undefined, sender)).resolves.toBe(transfer)
-    expect(sender).toHaveBeenCalledWith(validInput)
+    await expect(createTransfer(validInput, 'key-1', undefined, sender)).resolves.toBe(transfer)
+    expect(sender).toHaveBeenCalledWith(validInput, 'key-1')
   })
 })

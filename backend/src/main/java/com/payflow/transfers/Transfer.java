@@ -35,23 +35,33 @@ public class Transfer {
     private TransferStatus status;
 
     @Column(nullable = false, updatable = false)
+    private UUID ownerId;
+
+    @Column(updatable = false)
+    private UUID idempotencyKey;
+
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     protected Transfer() {
     }
 
-    private Transfer(UUID sourceAccountId, UUID destinationAccountId, BigDecimal amount, String currency) {
+    private Transfer(UUID sourceAccountId, UUID destinationAccountId, BigDecimal amount, String currency,
+                     UUID ownerId, UUID idempotencyKey) {
         this.id = UUID.randomUUID();
         this.sourceAccountId = sourceAccountId;
         this.destinationAccountId = destinationAccountId;
         this.amount = amount;
         this.currency = currency;
         this.status = TransferStatus.COMPLETED;
+        this.ownerId = ownerId;
+        this.idempotencyKey = idempotencyKey;
         this.createdAt = Instant.now();
     }
 
-    public static Transfer completed(UUID sourceAccountId, UUID destinationAccountId, BigDecimal amount, String currency) {
-        return new Transfer(sourceAccountId, destinationAccountId, amount, currency);
+    public static Transfer completed(UUID sourceAccountId, UUID destinationAccountId, BigDecimal amount,
+                                     String currency, UUID ownerId, UUID idempotencyKey) {
+        return new Transfer(sourceAccountId, destinationAccountId, amount, currency, ownerId, idempotencyKey);
     }
 
     public UUID getId() { return id; }
@@ -61,4 +71,6 @@ public class Transfer {
     public String getCurrency() { return currency; }
     public TransferStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
+    public UUID getOwnerId() { return ownerId; }
+    public UUID getIdempotencyKey() { return idempotencyKey; }
 }

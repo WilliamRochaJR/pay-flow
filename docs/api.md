@@ -119,6 +119,10 @@ Contas e transferências também exigem Bearer JWT. A API lista apenas recursos 
 
 `POST /transfers` passa a exigir `Authorization: Bearer <token>` e `Idempotency-Key: <uuid>`. A conta de origem deve pertencer ao usuário autenticado.
 
+A primeira chamada cria a transferência e retorna `201 Created`. Repetir a mesma chave com o mesmo
+corpo retorna a transferência original sem alterar os saldos novamente. Reutilizar a chave com um
+corpo diferente retorna `409 Conflict`. A chave é isolada por usuário autenticado.
+
 ## Erros
 
 Usar `application/problem+json` (Problem Details), com `type`, `title`, `status`, `detail` e `instance`. Validações de campo podem acrescentar `errors`.
