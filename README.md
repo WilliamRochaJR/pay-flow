@@ -76,3 +76,10 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 ## Estado
 
 M0 implementado para execução local. O próximo marco é o M1: autenticação, endurecimento operacional e publicação na AWS.
+
+## Licença
+
+Este projeto está disponível sob a [MIT License](LICENSE). Reutilizações e distribuições devem
+preservar o aviso de copyright e o texto da licença.
+
+Copyright © 2026 William Rocha JR.
