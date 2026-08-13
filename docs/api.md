@@ -79,6 +79,8 @@ Content-Type: application/json
 ```
 
 Retorna `201 Created`. A senha nunca aparece na resposta e é persistida somente como hash BCrypt.
+O cadastro não emite JWT nem inicia uma sessão. Após a criação, o front-end retorna ao formulário
+de login com o e-mail preenchido; somente o login bem-sucedido libera o dashboard.
 
 ### Login
 
@@ -113,7 +115,7 @@ Authorization: Bearer <jwt>
 
 Sem um token válido, retorna `401 Unauthorized`.
 
-Nesta etapa intermediária, somente `/me` está protegido. Contas e transferências serão protegidas quando a propriedade das contas for implementada no próximo incremento.
+Contas e transferências também exigem Bearer JWT. A API lista apenas recursos visíveis ao usuário autenticado e somente permite débito em uma conta de sua propriedade.
 
 `POST /transfers` passa a exigir `Authorization: Bearer <token>` e `Idempotency-Key: <uuid>`. A conta de origem deve pertencer ao usuário autenticado.
 

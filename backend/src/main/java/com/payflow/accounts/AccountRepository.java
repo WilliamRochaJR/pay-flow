@@ -12,7 +12,9 @@ import java.util.UUID;
 
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
-    List<Account> findAllByOrderByHolderNameAsc();
+    List<Account> findAllByOwnerIdOrderByHolderNameAsc(UUID ownerId);
+
+    java.util.Optional<Account> findByIdAndOwnerId(UUID id, UUID ownerId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.id in :ids order by a.id")

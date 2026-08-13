@@ -2,8 +2,11 @@ package com.payflow.transfers;
 
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,8 +31,10 @@ public class TransferController {
 
     @PostMapping
     @Operation(summary = "Criar uma transferência")
-    ResponseEntity<TransferResponse> create(@Valid @RequestBody CreateTransferRequest request) {
-        TransferResponse response = service.create(request);
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<TransferResponse> create(@Valid @RequestBody CreateTransferRequest request,
+                                            @AuthenticationPrincipal Jwt jwt) {
+        TransferResponse response = service.create(request, UUID.fromString(jwt.getSubject()));
         var location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
                 .buildAndExpand(response.id()).toUri();
         return ResponseEntity.created(location).body(response);
@@ -37,13 +42,15 @@ public class TransferController {
 
     @GetMapping
     @Operation(summary = "Listar transferências")
-    List<TransferResponse> list() {
-        return service.list();
+    @SecurityRequirement(name = "bearerAuth")
+    List<TransferResponse> list(@AuthenticationPrincipal Jwt jwt) {
+        return service.list(UUID.fromString(jwt.getSubject()));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Consultar uma transferência pelo identificador")
-    TransferResponse find(@PathVariable UUID id) {
-        return service.find(id);
+    @SecurityRequirement(name = "bearerAuth")
+    TransferResponse find(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return service.find(id, UUID.fromString(jwt.getSubject()));
     }
 }

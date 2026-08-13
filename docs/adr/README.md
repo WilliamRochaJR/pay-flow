@@ -15,3 +15,6 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0009 — Cobertura e SonarQube como Quality Gate](0009-coverage-and-sonarqube-quality-gate.md)
 - [ADR-0010 — OpenAPI gerado a partir do código](0010-openapi-generated-from-code.md)
 - [ADR-0011 — Autenticação stateless com JWT](0011-stateless-jwt-authentication.md)
+- [ADR-0012 — Autorização por propriedade do recurso](0012-resource-ownership-authorization.md)
+- [ADR-0013 — Mesma origem e CORS explícito por ambiente](0013-same-origin-and-explicit-cors.md)
+- [ADR-0014 — Roteamento explícito no front-end](0014-client-side-routing.md)

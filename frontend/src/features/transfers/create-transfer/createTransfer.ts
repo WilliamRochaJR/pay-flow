@@ -4,7 +4,11 @@ import { sendTransfer } from './createTransfer.service'
 
 type TransferSender = (input: CreateTransferInput) => Promise<Transfer>
 
-export function createTransfer(input: CreateTransferInput, sender: TransferSender = sendTransfer) {
+export function createTransfer(
+  input: CreateTransferInput,
+  accessToken?: string,
+  sender: TransferSender = (transfer) => sendTransfer(transfer, accessToken),
+) {
   if (input.sourceAccountId === input.destinationAccountId) {
     throw new Error('As contas de origem e destino devem ser diferentes.')
   }

@@ -1,11 +1,15 @@
 package com.payflow.auth;
 
+import com.payflow.accounts.Account;
+import com.payflow.accounts.AccountRepository;
 import com.payflow.shared.BusinessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -14,12 +18,15 @@ public class AuthService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final AccountRepository accountRepository;
     private final String dummyPasswordHash;
 
-    public AuthService(UserRepository repository, PasswordEncoder passwordEncoder, TokenService tokenService) {
+    public AuthService(UserRepository repository, PasswordEncoder passwordEncoder, TokenService tokenService,
+                       AccountRepository accountRepository) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+        this.accountRepository = accountRepository;
         this.dummyPasswordHash = passwordEncoder.encode("password-used-only-for-timing-protection");
     }
 
@@ -31,7 +38,12 @@ public class AuthService {
         }
         User user = User.register(request.name(), email, passwordEncoder.encode(request.password()));
         try {
-            return UserResponse.from(repository.saveAndFlush(user));
+            User savedUser = repository.saveAndFlush(user);
+            accountRepository.saveAll(List.of(
+                    Account.demo(savedUser.getId(), savedUser.getName() + " • Principal", new BigDecimal("2500.00")),
+                    Account.demo(savedUser.getId(), savedUser.getName() + " • Reserva", new BigDecimal("1000.00"))
+            ));
+            return UserResponse.from(savedUser);
         } catch (DataIntegrityViolationException exception) {
             throw emailAlreadyRegistered();
         }
