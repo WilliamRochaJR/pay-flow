@@ -41,6 +41,7 @@ Escopo:
 - proteção contra transferência duplicada com `Idempotency-Key`;
 - Dockerfiles e Docker Compose de produção;
 - deploy em uma EC2 com Caddy como proxy HTTPS;
+- fundação AWS reproduzível com Terraform, sem aplicar automaticamente a partir de Pull Requests;
 - PostgreSQL no mesmo host inicialmente, com volume persistente e backup automatizado;
 - evolução do GitHub Actions para realizar deploy após as verificações;
 - health checks, logs estruturados e limites básicos de requisição;
@@ -56,7 +57,7 @@ Critério de aceite: uma pessoa abre a URL pública, cria usuário, recebe saldo
 - Testcontainers nas integrações;
 - métricas com Spring Boot Actuator e alarmes básicos;
 - análise estática e cobertura no CI;
-- infraestrutura como código quando o ambiente deixar de ser descartável.
+- evolução da infraestrutura como código para recursos gerenciados e múltiplos ambientes.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
