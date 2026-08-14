@@ -16,6 +16,7 @@ frontend/*.tsbuildinfo
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # Terraform: estado, planos e valores locais nunca devem ser versionados.
 **/.terraform/
