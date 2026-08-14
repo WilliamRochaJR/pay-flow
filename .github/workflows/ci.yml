@@ -49,6 +49,29 @@ jobs:
         working-directory: infra/environments/production
         run: terraform validate
 
+  production-compose:
+    name: Production Compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate production configuration
+        run: >-
+          docker compose
+          --env-file .env.production.example
+          -f compose.prod.yaml
+          config --quiet
+
+      - name: Validate Caddy configuration
+        run: >-
+          docker run --rm
+          --env PAYFLOW_DOMAIN=localhost
+          --volume "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.10.2-alpine
+          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
   frontend:
     name: Front-end
     runs-on: ubuntu-latest

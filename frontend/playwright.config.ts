@@ -9,6 +9,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+    ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === 'true',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

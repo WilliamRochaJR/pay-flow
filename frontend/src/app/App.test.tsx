@@ -59,6 +59,7 @@ describe('PayFlow dashboard', () => {
   })
 
   it('returns to login without authenticating after registration', async () => {
+    const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/auth/register')) {
@@ -72,20 +73,20 @@ describe('PayFlow dashboard', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(<App />)
-    await userEvent.click(screen.getByRole('link', { name: /criar conta/i }))
-    await userEvent.type(screen.getByLabelText('Nome'), 'New User')
-    await userEvent.type(screen.getByLabelText('E-mail'), 'new@example.com')
-    await userEvent.type(screen.getByLabelText('Senha'), 'safe-password')
-    await userEvent.click(screen.getByRole('button', { name: /^criar conta$/i }))
+    await user.click(screen.getByRole('link', { name: /criar conta/i }))
+    await user.type(screen.getByLabelText('Nome'), 'New User')
+    await user.type(screen.getByLabelText('E-mail'), 'new@example.com')
+    await user.type(screen.getByLabelText('Senha'), 'safe-password')
+    await user.click(screen.getByRole('button', { name: /^criar conta$/i }))
 
-    expect(
-      await screen.findByText('Conta criada com sucesso. Entre com seu e-mail e senha.'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Acesse sua conta' })).toBeInTheDocument()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(await screen.findByRole('heading', { name: 'Acesse sua conta' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Conta criada com sucesso. Entre com seu e-mail e senha.',
+    )
     expect(window.location.pathname).toBe('/login')
     expect(screen.getByLabelText('E-mail')).toHaveValue('new@example.com')
     expect(screen.getByLabelText('Senha')).toHaveValue('')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('creates a transfer and refreshes the history', async () => {

@@ -73,6 +73,7 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 - [Contrato inicial da API](docs/api.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 - [Infraestrutura AWS com Terraform](infra/README.md)
+- [Runtime de produção com Compose e Caddy](deploy/README.md)
 
 ## Estado
 
