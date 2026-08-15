@@ -5,7 +5,7 @@ demais serviços se comunicam pelas redes privadas do Compose.
 
 ```mermaid
 flowchart LR
-    Internet["Internet"] -->|"80/443"| Caddy
+    Internet["Internet"] -->|"80"| Caddy
 
     subgraph AppNetwork["rede app"]
         Caddy --> Frontend["frontend:80"]
@@ -19,22 +19,21 @@ flowchart LR
 
 ## Validar localmente
 
-O arquivo de exemplo usa `localhost`, HTTP `8088` e HTTPS `8443` para evitar conflito com o Compose
-de desenvolvimento:
+O arquivo de exemplo usa `localhost` e HTTP `8088` para evitar conflito com o Compose de
+desenvolvimento:
 
 ```bash
 docker compose --env-file .env.production.example -f compose.prod.yaml config --quiet
 docker compose --env-file .env.production.example -f compose.prod.yaml up --build --wait
-curl --insecure https://localhost:8443/
-curl --insecure https://localhost:8443/health
-PLAYWRIGHT_BASE_URL=https://localhost:8443 \
-PLAYWRIGHT_IGNORE_HTTPS_ERRORS=true \
+curl http://localhost:8088/
+curl http://localhost:8088/health
+PLAYWRIGHT_BASE_URL=http://localhost:8088 \
   npm --prefix frontend run test:e2e
 docker compose --env-file .env.production.example -f compose.prod.yaml down
 ```
 
-`--insecure` é usado somente porque o Caddy emite uma CA local para `localhost`. No domínio público,
-o certificado será validado normalmente e esse parâmetro não deve ser usado.
+O endereço `:80` no Caddy força HTTP durante a fase sem domínio. Quando um domínio for adotado, o
+endereço do site poderá ser alterado para o hostname e o Caddy voltará a automatizar HTTPS.
 
 ## Produção
 
@@ -47,14 +46,16 @@ chmod 600 .env.production
 docker compose --env-file .env.production -f compose.prod.yaml config --quiet
 ```
 
-Para o servidor público:
+Para a PoC pública temporária sem domínio:
 
 ```text
-PAYFLOW_DOMAIN=payflow.seudominio.com
-APP_PUBLIC_ORIGIN=https://payflow.seudominio.com
+PAYFLOW_SITE_ADDRESS=:80
+APP_PUBLIC_ORIGIN=http://<elastic-ip-temporario>
 HTTP_PORT=80
-HTTPS_PORT=443
 ```
+
+No futuro, com domínio, use `PAYFLOW_SITE_ADDRESS=payflow.seudominio.com` e a origem HTTPS
+correspondente.
 
 Nunca execute `docker compose config` sem `--quiet` em logs públicos: a saída expandida contém os
 valores das variáveis, incluindo secrets. O arquivo real `.env.production` é ignorado pelo Git.

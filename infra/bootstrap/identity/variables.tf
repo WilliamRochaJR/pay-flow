@@ -41,3 +41,13 @@ variable "existing_github_oidc_provider_arn" {
     error_message = "existing_github_oidc_provider_arn must be the account GitHub Actions provider ARN."
   }
 }
+
+variable "terraform_state_bucket_name" {
+  description = "Private bucket that stores PayFlow Terraform state and ephemeral lease metadata."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.terraform_state_bucket_name))
+    error_message = "terraform_state_bucket_name must be a valid S3 bucket name."
+  }
+}

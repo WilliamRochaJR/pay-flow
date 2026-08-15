@@ -1,6 +1,7 @@
 # Bootstrap de identidade GitHub Actions
 
-Este módulo configura credenciais temporárias do GitHub Actions para deploy por AWS Systems Manager.
+Este módulo configura duas credenciais temporárias do GitHub Actions: uma para deploy por AWS Systems
+Manager e outra para o ciclo de vida da infraestrutura efêmera.
 Ele depende do bucket criado por `infra/bootstrap/state`.
 
 ## Verificar provider existente
@@ -23,12 +24,15 @@ sequenceDiagram
     participant OIDC as GitHub OIDC
     participant STS as AWS STS
     participant SSM as AWS Systems Manager
+    participant TF as Terraform
     participant EC2 as EC2 PayFlow
 
     GHA->>OIDC: Solicita token do job
     OIDC-->>GHA: Token assinado e temporário
     GHA->>STS: AssumeRoleWithWebIdentity
     STS-->>GHA: Credenciais AWS temporárias
+    GHA->>TF: Assume a role de infraestrutura no job de publicação
+    TF->>EC2: Cria ou destrói o ambiente temporário
     GHA->>SSM: Envia comando de deploy
     SSM->>EC2: Executa somente na instância etiquetada
     EC2-->>SSM: Resultado do comando
@@ -43,9 +47,19 @@ Crie o environment `production` em:
 Repository -> Settings -> Environments -> New environment
 ```
 
-Restrinja as deployment branches à `main` e, quando disponível no plano do GitHub, configure required
-reviewers. Depois do `apply`, salve o output `github_deploy_role_arn` como uma **Environment variable**
-chamada `AWS_DEPLOY_ROLE_ARN`. O ARN identifica uma role e não é secret.
+Restrinja as deployment branches à `main`. Não configure required reviewers nesse Environment enquanto
+o watchdog agendado depender dele: uma aprovação manual impediria a limpeza automática. A publicação
+continua manual por `workflow_dispatch`, e mudanças no workflow chegam à `main` somente por Pull
+Request. Depois do `apply`, salve os outputs como **Environment variables**:
+
+| Output Terraform                 | Variável GitHub               |
+| -------------------------------- | ----------------------------- |
+| `github_deploy_role_arn`         | `AWS_DEPLOY_ROLE_ARN`         |
+| `github_infrastructure_role_arn` | `AWS_INFRASTRUCTURE_ROLE_ARN` |
+
+Os ARNs identificam roles e não são secrets. A role de deploy executa somente comandos SSM. A role de
+infraestrutura gerencia os recursos temporários do módulo `production`, seu state e a concessão de
+TTL. Ela não gerencia o bootstrap persistente nem o AWS Budget.
 
 ## Validar sem acessar a AWS
 
@@ -64,5 +78,5 @@ terraform plan -out=identity.tfplan
 terraform show identity.tfplan
 ```
 
-`apply` não é executado pela CI e exige revisão explícita. A role criada não provisiona infraestrutura,
-não lê o state e não possui `AdministratorAccess`.
+`apply` não é executado pela CI e exige revisão explícita. Nenhuma role possui
+`AdministratorAccess`; cada uma tem uma política inline diferente para sua responsabilidade.
