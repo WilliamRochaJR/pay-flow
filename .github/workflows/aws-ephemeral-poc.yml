@@ -156,6 +156,7 @@ jobs:
               Parameters: {
                 commands: [
                   "set -eu",
+                  "cloud-init status --wait",
                   "install -d -m 0750 /opt/payflow",
                   "if [ ! -d /opt/payflow/repository/.git ]; then git clone https://github.com/WilliamRochaJR/pay-flow.git /opt/payflow/repository; fi",
                   "git -C /opt/payflow/repository fetch --prune origin",
