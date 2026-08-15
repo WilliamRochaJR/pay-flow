@@ -2,6 +2,7 @@
 
 - Status: Aceito
 - Data: 2026-08-14
+- Atualizado em: 2026-08-15
 
 ## Contexto
 
@@ -24,6 +25,16 @@ O módulo aceitará o ARN de um provider GitHub OIDC já existente ou criará o 
 existir. O primeiro provisionamento da infraestrutura continuará manual, autenticado por SSO. Uma
 role separada para Terraform só será criada se a automação de `plan/apply` for adotada posteriormente.
 
+A organização GitHub usa um template customizado de subject que inclui os IDs numéricos imutáveis do
+owner e do repositório. Portanto, a condição `sub` deve seguir:
+
+```text
+repo:<owner>@<owner-id>/<repository>@<repository-id>:environment:<environment>
+```
+
+Usar os IDs evita que uma renomeação transfira inadvertidamente a confiança para outro owner ou
+repositório com o nome antigo. Os IDs são metadados públicos, não secrets.
+
 ## Consequências
 
 Não existem chaves AWS permanentes no GitHub. Cada job recebe credenciais temporárias e somente após
@@ -35,3 +46,6 @@ ser usado apenas por workflows revisados na `main`.
 
 Reutilizar um provider existente evita conflito na conta, mas exige descobrir e informar seu ARN antes
 do primeiro `plan`.
+
+O formato do subject depende da configuração OIDC da organização. Ele deve ser confirmado no
+CloudTrail durante o primeiro teste, em vez de presumido apenas a partir do formato padrão do GitHub.

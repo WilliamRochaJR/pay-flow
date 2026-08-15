@@ -4,6 +4,24 @@ Este módulo configura duas credenciais temporárias do GitHub Actions: uma para
 Manager e outra para o ciclo de vida da infraestrutura efêmera.
 Ele depende do bucket criado por `infra/bootstrap/state`.
 
+## Subject customizado da organização
+
+O token emitido para este repositório contém IDs imutáveis no subject:
+
+```text
+repo:<owner>@<owner-id>/<repository>@<repository-id>:environment:production
+```
+
+Confirme os IDs sem acessar secrets:
+
+```bash
+gh api users/WilliamRochaJR --jq .id
+gh api repos/WilliamRochaJR/pay-flow --jq .id
+```
+
+Os valores devem ser informados por `github_owner_id` e `github_repository_id`. A trust policy usa
+igualdade exata para audience e subject.
+
 ## Verificar provider existente
 
 Depois do login SSO:

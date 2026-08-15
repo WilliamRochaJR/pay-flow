@@ -27,6 +27,28 @@ variable "github_repository" {
   }
 }
 
+variable "github_owner_id" {
+  description = "Immutable numeric GitHub owner ID included in this organization's customized OIDC subject."
+  type        = number
+  default     = 38361127
+
+  validation {
+    condition     = var.github_owner_id > 0
+    error_message = "github_owner_id must be a positive GitHub numeric ID."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Immutable numeric GitHub repository ID included in the customized OIDC subject."
+  type        = number
+  default     = 1331549119
+
+  validation {
+    condition     = var.github_repository_id > 0
+    error_message = "github_repository_id must be a positive GitHub numeric ID."
+  }
+}
+
 variable "existing_github_oidc_provider_arn" {
   description = "Existing account-level GitHub OIDC provider ARN. Leave null to create it."
   type        = string
