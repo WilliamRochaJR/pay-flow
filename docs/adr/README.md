@@ -21,3 +21,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0015 — Idempotência na criação de transferências](0015-transfer-idempotency.md)
 - [ADR-0016 — Logs estruturados e correlação HTTP](0016-structured-logging-and-correlation.md)
 - [ADR-0017 — Rate limiting em memória no primeiro deploy](0017-in-memory-rate-limiting.md)
+- [ADR-0018 — GitHub Actions autentica na AWS com OIDC](0018-github-actions-aws-oidc.md)

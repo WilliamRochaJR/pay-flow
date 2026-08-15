@@ -41,6 +41,14 @@ jobs:
         working-directory: infra/bootstrap/state
         run: terraform validate
 
+      - name: Initialize identity bootstrap without remote backend
+        working-directory: infra/bootstrap/identity
+        run: terraform init -backend=false
+
+      - name: Validate identity bootstrap
+        working-directory: infra/bootstrap/identity
+        run: terraform validate
+
       - name: Initialize production without remote backend
         working-directory: infra/environments/production
         run: terraform init -backend=false
