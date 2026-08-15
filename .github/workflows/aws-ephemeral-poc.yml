@@ -51,10 +51,12 @@ jobs:
           test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}" || { echo "Configure AWS_DEPLOY_ROLE_ARN."; exit 1; }
 
       - name: Configure AWS credentials for infrastructure
+        id: infrastructure_credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          retry-max-attempts: 3
 
       - name: Set up Terraform
         if: ${{ always() }}
@@ -240,13 +242,15 @@ jobs:
 
       - name: Configure AWS credentials for cleanup
         if: ${{ always() }}
+        id: cleanup_credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          retry-max-attempts: 3
 
       - name: Destroy ephemeral infrastructure
-        if: ${{ always() }}
+        if: ${{ always() && steps.cleanup_credentials.outcome == 'success' }}
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init \

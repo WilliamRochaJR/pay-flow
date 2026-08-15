@@ -2,6 +2,8 @@ aws_region       = "us-east-1"
 project_name     = "payflow"
 environment      = "production"
 github_repository = "WilliamRochaJR/pay-flow"
+github_owner_id = 38361127
+github_repository_id = 1331549119
 terraform_state_bucket_name = "replace-with-terraform-state-bucket"
 
 # Set this only when the account already has the GitHub Actions provider.
