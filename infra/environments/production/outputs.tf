@@ -4,8 +4,13 @@ output "instance_id" {
 }
 
 output "public_ip" {
-  description = "Elastic IP to configure in DNS."
+  description = "Temporary Elastic IP used to access the domainless PoC over HTTP."
   value       = aws_eip.app.public_ip
+}
+
+output "public_url" {
+  description = "Temporary HTTP URL. It changes after the environment is destroyed and recreated."
+  value       = "http://${aws_eip.app.public_ip}"
 }
 
 output "backup_bucket_name" {

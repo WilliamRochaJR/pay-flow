@@ -1,0 +1,5 @@
+aws_region        = "us-east-1"
+monthly_budget_usd = 5
+
+# Do not put the real email in this versioned example. Prefer:
+# export TF_VAR_alert_email="your-address@example.com"

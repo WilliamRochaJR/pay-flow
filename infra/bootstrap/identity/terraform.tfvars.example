@@ -2,6 +2,7 @@ aws_region       = "us-east-1"
 project_name     = "payflow"
 environment      = "production"
 github_repository = "WilliamRochaJR/pay-flow"
+terraform_state_bucket_name = "replace-with-terraform-state-bucket"
 
 # Set this only when the account already has the GitHub Actions provider.
 # existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"

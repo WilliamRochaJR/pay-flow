@@ -40,14 +40,16 @@ Escopo:
 - tratamento padronizado de erros e documentação OpenAPI;
 - proteção contra transferência duplicada com `Idempotency-Key`;
 - Dockerfiles e Docker Compose de produção;
-- deploy em uma EC2 com Caddy como proxy HTTPS;
+- deploy efêmero em uma EC2 com Caddy como proxy HTTP enquanto não houver domínio;
 - fundação AWS reproduzível com Terraform, sem aplicar automaticamente a partir de Pull Requests;
 - PostgreSQL no mesmo host inicialmente, com volume persistente e backup automatizado;
 - evolução do GitHub Actions para realizar deploy após as verificações;
 - health checks, logs estruturados e limites básicos de requisição;
 - aviso explícito de ambiente fictício e dados de demonstração.
 
-Critério de aceite: uma pessoa abre a URL pública, cria usuário, recebe saldo fictício, faz uma transferência e consulta o histórico. CI impede merge com testes quebrados e o deploy é repetível.
+Critério de aceite: uma pessoa abre a URL pública temporária, cria usuário, recebe saldo fictício, faz
+uma transferência e consulta o histórico. CI impede merge com testes quebrados, o deploy é repetível e
+o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o projeto adotar um domínio.
 
 ## M2 — confiabilidade e qualidade
 
@@ -103,7 +105,7 @@ Esses itens não são requisitos para declarar o portfólio pronto.
 
 ## Definição de pronto do portfólio
 
-- URL pública funcional e HTTPS;
+- URL pública funcional; HTTPS quando houver um domínio validável;
 - repositório com README, diagrama, ADRs e instruções de execução;
 - dados exclusivamente fictícios;
 - pipeline verde;

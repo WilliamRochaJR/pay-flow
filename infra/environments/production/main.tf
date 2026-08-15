@@ -53,21 +53,13 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_security_group" "web" {
   name        = "${local.name}-web"
-  description = "Public HTTP and HTTPS for PayFlow; administration uses SSM"
+  description = "Public HTTP for the domainless PayFlow PoC; administration uses SSM"
   vpc_id      = aws_vpc.main.id
 
   ingress {
     description = "HTTP for HTTPS redirect and certificate issuance"
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.http_ingress_cidrs
-  }
-
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = var.http_ingress_cidrs
   }
@@ -154,6 +146,22 @@ resource "aws_iam_role" "instance" {
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.instance.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+data "aws_iam_policy_document" "runtime_configuration" {
+  statement {
+    sid     = "ReadEncryptedRuntimeConfiguration"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/runtime-env"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "runtime_configuration" {
+  name   = "${local.name}-runtime-configuration"
+  role   = aws_iam_role.instance.id
+  policy = data.aws_iam_policy_document.runtime_configuration.json
 }
 
 data "aws_iam_policy_document" "backup_access" {

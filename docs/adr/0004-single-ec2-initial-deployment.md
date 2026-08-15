@@ -28,3 +28,6 @@ controlar permissões AWS. O bucket de backup não substitui testes periódicos 
 
 Quando disponibilidade ou operação justificarem, PostgreSQL migra para RDS, o front para CDN e a API
 para uma plataforma com múltiplas instâncias.
+
+Para a fase de demonstração do portfólio, o ciclo de vida temporário, o acesso sem domínio e o TTL são
+definidos pelo [ADR-0019](0019-ephemeral-aws-poc-with-ttl.md).

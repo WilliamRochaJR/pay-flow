@@ -1,0 +1,95 @@
+name: AWS Ephemeral Cleanup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: payflow-production-ephemeral
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove expired AWS PoC
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      AWS_REGION: us-east-1
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_WORKING_DIR: infra/environments/production
+      RUNTIME_PARAMETER: /payflow/production/runtime-env
+      LEASE_KEY: payflow/leases/production.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials for inspection
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Decide whether cleanup is required
+        id: lease
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo 'cleanup=true' >> "$GITHUB_OUTPUT"
+            echo 'Manual emergency cleanup requested.'
+            exit 0
+          fi
+          if ! aws s3 cp "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY" lease.json; then
+            echo 'cleanup=false' >> "$GITHUB_OUTPUT"
+            echo 'No active lease found.'
+            exit 0
+          fi
+          expires_epoch=$(jq -er '.expires_epoch' lease.json)
+          if [ "$(date +%s)" -ge "$expires_epoch" ]; then
+            echo 'cleanup=true' >> "$GITHUB_OUTPUT"
+            echo 'The lease has expired.'
+          else
+            echo 'cleanup=false' >> "$GITHUB_OUTPUT"
+            echo 'The lease is still active.'
+          fi
+
+      - name: Set up Terraform
+        if: steps.lease.outputs.cleanup == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.2"
+
+      - name: Initialize Terraform
+        if: steps.lease.outputs.cleanup == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}"
+          -backend-config="key=payflow/production/terraform.tfstate"
+          -backend-config="region=${AWS_REGION}"
+          -backend-config="use_lockfile=true"
+          -backend-config="encrypt=true"
+
+      - name: Destroy expired infrastructure
+        if: steps.lease.outputs.cleanup == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform destroy -auto-approve
+          aws s3 rm "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY"
+
+      - name: Configure AWS credentials for secret cleanup
+        if: steps.lease.outputs.cleanup == 'true'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Remove stale runtime configuration
+        if: steps.lease.outputs.cleanup == 'true'
+        run: aws ssm delete-parameter --name "$RUNTIME_PARAMETER" || true

@@ -3,7 +3,7 @@
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;
-- Security Group com somente HTTP e HTTPS de entrada;
+- Security Group com somente HTTP de entrada enquanto não houver domínio;
 - EC2 Ubuntu com Docker, Compose, IMDSv2 obrigatório e administração por Systems Manager;
 - Elastic IP para DNS estável;
 - bucket S3 privado, versionado, criptografado e com retenção para backups;
@@ -11,6 +11,10 @@
 
 PostgreSQL e API não terão portas públicas. Isso será garantido pelo Compose de produção na próxima
 etapa.
+
+Sem domínio, a PoC usa o output `public_url` em HTTP. Caddy continua como proxy reverso, mas não tenta
+emitir um certificado para um endereço IP. A porta 443 será adicionada somente junto com a adoção de
+domínio e HTTPS.
 
 ## Antes de executar
 
@@ -50,6 +54,28 @@ Revise recursos, região, tamanho da EC2 e custos antes de considerar `apply`. O
 
 `terraform apply production.tfplan` cria recursos com custo. Ele só deve ser executado depois de uma
 revisão explícita do plano. A CI deste Pull Request executa apenas `fmt` e `validate`.
+
+Na operação normal, o workflow manual `AWS Ephemeral PoC` executa `plan`, `apply`, deploy, health check
+e `destroy`. Escolha um TTL de 20, 40 ou 60 minutos. Não execute `apply` local ao mesmo tempo, pois os
+dois processos compartilham o mesmo state e lock.
+
+O workflow `AWS Ephemeral Cleanup` roda periodicamente e também aceita acionamento manual. Ele destrói
+o ambiente somente quando a concessão no S3 expirou; no acionamento manual, força a limpeza. Os
+workflows nunca são disparados por um Pull Request.
+
+Configure no GitHub Environment `production`:
+
+| Tipo     | Nome                          | Conteúdo                                |
+| -------- | ----------------------------- | --------------------------------------- |
+| Variable | `AWS_STATE_BUCKET`            | Nome do bucket privado de state         |
+| Variable | `AWS_INFRASTRUCTURE_ROLE_ARN` | Output da role Terraform                |
+| Variable | `AWS_DEPLOY_ROLE_ARN`         | Output da role SSM                      |
+| Secret   | `POSTGRES_PASSWORD`           | Senha exclusiva e aleatória da PoC      |
+| Secret   | `JWT_SECRET`                  | Segredo Base64 forte e exclusivo da PoC |
+
+Restrinja as deployment branches desse Environment à `main`. Enquanto o watchdog usar o mesmo
+Environment, não exija aprovação manual nele, pois jobs agendados ficariam aguardando aprovação e não
+destruiriam o ambiente expirado. O job mostra a URL e o horário de expiração no Summary da execução.
 
 ## Estado e recuperação
 

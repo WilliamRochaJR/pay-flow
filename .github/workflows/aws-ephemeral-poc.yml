@@ -1,0 +1,259 @@
+name: AWS Ephemeral PoC
+
+on:
+  workflow_dispatch:
+    inputs:
+      ttl_minutes:
+        description: Minutes to keep the healthy PoC online
+        required: true
+        default: "20"
+        type: choice
+        options:
+          - "20"
+          - "40"
+          - "60"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: payflow-production-ephemeral
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish for ${{ inputs.ttl_minutes }} minutes
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+    env:
+      AWS_REGION: us-east-1
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_WORKING_DIR: infra/environments/production
+      RUNTIME_PARAMETER: /payflow/production/runtime-env
+      LEASE_KEY: payflow/leases/production.json
+
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@v6
+
+      - name: Validate production configuration
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          test -n "$POSTGRES_PASSWORD" || { echo "Configure the POSTGRES_PASSWORD environment secret."; exit 1; }
+          test -n "$JWT_SECRET" || { echo "Configure the JWT_SECRET environment secret."; exit 1; }
+          test -n "${{ vars.AWS_STATE_BUCKET }}" || { echo "Configure the AWS_STATE_BUCKET environment variable."; exit 1; }
+          test -n "${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}" || { echo "Configure AWS_INFRASTRUCTURE_ROLE_ARN."; exit 1; }
+          test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}" || { echo "Configure AWS_DEPLOY_ROLE_ARN."; exit 1; }
+
+      - name: Configure AWS credentials for infrastructure
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        if: ${{ always() }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.2"
+
+      - name: Initialize Terraform
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}"
+          -backend-config="key=payflow/production/terraform.tfstate"
+          -backend-config="region=${AWS_REGION}"
+          -backend-config="use_lockfile=true"
+          -backend-config="encrypt=true"
+
+      - name: Review and create ephemeral infrastructure
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform plan -out=production.tfplan
+          terraform apply -auto-approve production.tfplan
+
+      - name: Read infrastructure outputs
+        id: infrastructure
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "public_url=$(terraform output -raw public_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials for application deploy
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Store encrypted runtime configuration
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
+        run: |
+          umask 077
+          runtime_file=$(mktemp)
+          {
+            echo 'PAYFLOW_SITE_ADDRESS=:80'
+            echo "APP_PUBLIC_ORIGIN=$PUBLIC_URL"
+            echo 'HTTP_PORT=80'
+            echo 'POSTGRES_DB=payflow'
+            echo 'POSTGRES_USER=payflow'
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            echo 'JWT_ISSUER=payflow-api'
+            echo 'JWT_ACCESS_TOKEN_TTL=15m'
+            echo 'LOG_LEVEL=INFO'
+            echo 'RATE_LIMIT_LOGIN=10'
+            echo 'RATE_LIMIT_REGISTRATION=5'
+            echo 'RATE_LIMIT_TRANSFER=30'
+            echo 'RATE_LIMIT_WINDOW=1m'
+          } > "$runtime_file"
+          aws ssm put-parameter \
+            --name "$RUNTIME_PARAMETER" \
+            --type SecureString \
+            --overwrite \
+            --value "file://$runtime_file"
+
+      - name: Wait for Systems Manager
+        env:
+          INSTANCE_ID: ${{ steps.infrastructure.outputs.instance_id }}
+        run: |
+          for attempt in $(seq 1 60); do
+            status=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text)
+            if [ "$status" = "Online" ]; then
+              exit 0
+            fi
+            echo "Waiting for SSM ($attempt/60)..."
+            sleep 10
+          done
+          echo "The instance did not become available through SSM."
+          exit 1
+
+      - name: Deploy selected revision through SSM
+        env:
+          INSTANCE_ID: ${{ steps.infrastructure.outputs.instance_id }}
+          REVISION: ${{ github.sha }}
+        run: |
+          command_payload=$(jq -n \
+            --arg instance "$INSTANCE_ID" \
+            --arg revision "$REVISION" \
+            --arg parameter "$RUNTIME_PARAMETER" \
+            '{
+              DocumentName: "AWS-RunShellScript",
+              InstanceIds: [$instance],
+              Parameters: {
+                commands: [
+                  "set -euo pipefail",
+                  "install -d -m 0750 /opt/payflow",
+                  "if [ ! -d /opt/payflow/repository/.git ]; then git clone https://github.com/WilliamRochaJR/pay-flow.git /opt/payflow/repository; fi",
+                  "git -C /opt/payflow/repository fetch --prune origin",
+                  ("git -C /opt/payflow/repository checkout --force " + $revision),
+                  ("aws ssm get-parameter --name " + $parameter + " --with-decryption --query Parameter.Value --output text > /opt/payflow/repository/.env.production"),
+                  "chmod 0600 /opt/payflow/repository/.env.production",
+                  "cd /opt/payflow/repository",
+                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans"
+                ]
+              },
+              TimeoutSeconds: 1800
+            }')
+          command_id=$(aws ssm send-command \
+            --cli-input-json "$command_payload" \
+            --query 'Command.CommandId' \
+            --output text)
+          for attempt in $(seq 1 180); do
+            status=$(aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$INSTANCE_ID" \
+              --query Status \
+              --output text 2>/dev/null || true)
+            case "$status" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                echo "SSM deploy finished with status $status."
+                aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID"
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" -eq 180 ]; then
+              echo 'SSM deploy did not finish within 30 minutes.'
+              exit 1
+            fi
+            sleep 10
+          done
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}'
+
+      - name: Verify public health endpoint
+        env:
+          PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error "$PUBLIC_URL/health"; then
+              exit 0
+            fi
+            echo "Waiting for public health endpoint ($attempt/30)..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Start TTL after successful health check
+        env:
+          PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
+          TTL_MINUTES: ${{ inputs.ttl_minutes }}
+        run: |
+          expires_epoch=$(( $(date +%s) + TTL_MINUTES * 60 ))
+          expires_at=$(date --utc --date="@$expires_epoch" +%Y-%m-%dT%H:%M:%SZ)
+          jq -n \
+            --arg expires_at "$expires_at" \
+            --argjson expires_epoch "$expires_epoch" \
+            --arg public_url "$PUBLIC_URL" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg revision "$GITHUB_SHA" \
+            '{expires_at:$expires_at,expires_epoch:$expires_epoch,public_url:$public_url,run_id:$run_id,revision:$revision}' \
+            > lease.json
+          aws s3 cp lease.json "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY"
+          {
+            echo "## PayFlow temporariamente publicado"
+            echo ""
+            echo "- URL: $PUBLIC_URL"
+            echo "- Expira em: $expires_at"
+            echo "- TTL iniciado somente após o health check"
+          } >> "$GITHUB_STEP_SUMMARY"
+          sleep "${TTL_MINUTES}m"
+
+      - name: Remove encrypted runtime configuration
+        if: ${{ always() }}
+        continue-on-error: true
+        run: aws ssm delete-parameter --name "$RUNTIME_PARAMETER"
+
+      - name: Configure AWS credentials for cleanup
+        if: ${{ always() }}
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Destroy ephemeral infrastructure
+        if: ${{ always() }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}" \
+            -backend-config="key=payflow/production/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+          terraform destroy -auto-approve
+          aws s3 rm "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY"

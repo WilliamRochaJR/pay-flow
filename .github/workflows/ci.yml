@@ -49,6 +49,16 @@ jobs:
         working-directory: infra/bootstrap/identity
         run: terraform validate
 
+      - name: Initialize cost controls bootstrap without remote backend
+        working-directory: infra/bootstrap/cost-controls
+        run: terraform init -backend=false
+
+      - name: Validate cost controls bootstrap
+        working-directory: infra/bootstrap/cost-controls
+        env:
+          TF_VAR_alert_email: ci@example.com
+        run: terraform validate
+
       - name: Initialize production without remote backend
         working-directory: infra/environments/production
         run: terraform init -backend=false
@@ -75,7 +85,7 @@ jobs:
       - name: Validate Caddy configuration
         run: >-
           docker run --rm
-          --env PAYFLOW_DOMAIN=localhost
+          --env PAYFLOW_SITE_ADDRESS=:80
           --volume "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
           caddy:2.10.2-alpine
           caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

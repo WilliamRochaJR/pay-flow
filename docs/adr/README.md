@@ -22,3 +22,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0016 — Logs estruturados e correlação HTTP](0016-structured-logging-and-correlation.md)
 - [ADR-0017 — Rate limiting em memória no primeiro deploy](0017-in-memory-rate-limiting.md)
 - [ADR-0018 — GitHub Actions autentica na AWS com OIDC](0018-github-actions-aws-oidc.md)
+- [ADR-0019 — PoC AWS efêmera controlada por TTL](0019-ephemeral-aws-poc-with-ttl.md)

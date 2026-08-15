@@ -5,7 +5,7 @@
 	}
 }
 
-{$PAYFLOW_DOMAIN} {
+{$PAYFLOW_SITE_ADDRESS} {
 	encode zstd gzip
 
 	header {
