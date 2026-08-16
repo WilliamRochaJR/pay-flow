@@ -15,6 +15,12 @@ unzip -q "$${aws_cli_installer}/awscliv2.zip" -d "$${aws_cli_installer}"
 "$${aws_cli_installer}/aws/install"
 rm --recursive --force "$${aws_cli_installer}"
 
+fallocate --length 2G /swapfile
+chmod 0600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
 systemctl enable --now docker
 
 install --directory --owner=ubuntu --group=ubuntu --mode=0750 /opt/${project_name}

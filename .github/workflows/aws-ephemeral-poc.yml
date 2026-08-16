@@ -164,7 +164,7 @@ jobs:
                   ("aws ssm get-parameter --name " + $parameter + " --with-decryption --query Parameter.Value --output text > /opt/payflow/repository/.env.production"),
                   "chmod 0600 /opt/payflow/repository/.env.production",
                   "cd /opt/payflow/repository",
-                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans"
+                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans || { docker compose --env-file .env.production -f compose.prod.yaml ps --all; docker compose --env-file .env.production -f compose.prod.yaml logs --no-color --tail 200 api; exit 1; }"
                 ]
               },
               TimeoutSeconds: 1800

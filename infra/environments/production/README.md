@@ -4,7 +4,8 @@
 
 - VPC e subnet pública sem NAT Gateway;
 - Security Group com somente HTTP de entrada enquanto não houver domínio;
-- EC2 Ubuntu com Docker, Compose, IMDSv2 obrigatório e administração por Systems Manager;
+- EC2 Ubuntu com Docker, Compose, swap local de 2 GiB, IMDSv2 obrigatório e administração por
+  Systems Manager;
 - Elastic IP para DNS estável;
 - bucket S3 privado, versionado, criptografado e com retenção para backups;
 - role da EC2 limitada a SSM e ao bucket de backup.
@@ -86,3 +87,7 @@ backups do PostgreSQL, pois ele precisa existir antes de `terraform init`.
 O volume raiz da EC2 preserva dados quando containers são recriados, mas não é um backup e pode ser
 substituído junto com a instância. Antes do primeiro deploy público será implementado `pg_dump` para o
 bucket privado e um teste de restauração.
+
+A swap de 2 GiB usa o próprio volume raiz e reduz o risco de falta de memória durante os builds e a
+inicialização dos containers na `t3.micro`. Ela não substitui memória RAM nem dimensionamento de
+produção; é uma escolha temporária para a PoC efêmera e de baixo custo.
