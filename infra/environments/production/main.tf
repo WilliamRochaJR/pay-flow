@@ -4,6 +4,15 @@ data "aws_ssm_parameter" "ubuntu_ami" {
   name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }
 
+data "aws_ec2_instance_type_offerings" "app" {
+  filter {
+    name   = "instance-type"
+    values = [var.instance_type]
+  }
+
+  location_type = "availability-zone"
+}
+
 locals {
   name = "${var.project_name}-${var.environment}"
   common_tags = {
@@ -30,6 +39,7 @@ resource "aws_internet_gateway" "main" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.42.1.0/24"
+  availability_zone       = sort(data.aws_ec2_instance_type_offerings.app.locations)[0]
   map_public_ip_on_launch = true
 
   tags = { Name = "${local.name}-public" }
