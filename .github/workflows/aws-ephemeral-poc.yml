@@ -44,8 +44,11 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
+          set -o pipefail
           test -n "$POSTGRES_PASSWORD" || { echo "Configure the POSTGRES_PASSWORD environment secret."; exit 1; }
           test -n "$JWT_SECRET" || { echo "Configure the JWT_SECRET environment secret."; exit 1; }
+          jwt_secret_bytes=$(printf '%s' "$JWT_SECRET" | base64 --decode 2>/dev/null | wc -c)
+          test "$jwt_secret_bytes" -ge 32 || { echo "JWT_SECRET must be valid Base64 containing at least 32 bytes."; exit 1; }
           test -n "${{ vars.AWS_STATE_BUCKET }}" || { echo "Configure the AWS_STATE_BUCKET environment variable."; exit 1; }
           test -n "${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}" || { echo "Configure AWS_INFRASTRUCTURE_ROLE_ARN."; exit 1; }
           test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}" || { echo "Configure AWS_DEPLOY_ROLE_ARN."; exit 1; }
@@ -164,7 +167,8 @@ jobs:
                   ("aws ssm get-parameter --name " + $parameter + " --with-decryption --query Parameter.Value --output text > /opt/payflow/repository/.env.production"),
                   "chmod 0600 /opt/payflow/repository/.env.production",
                   "cd /opt/payflow/repository",
-                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans || { docker compose --env-file .env.production -f compose.prod.yaml ps --all; docker compose --env-file .env.production -f compose.prod.yaml logs --no-color --tail 200 api; exit 1; }"
+                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans > /tmp/payflow-compose.log 2>&1 || { tail -n 120 /tmp/payflow-compose.log; docker compose --env-file .env.production -f compose.prod.yaml ps --all; docker compose --env-file .env.production -f compose.prod.yaml logs --no-color --tail 120 api; exit 1; }",
+                  "rm --force /tmp/payflow-compose.log"
                 ]
               },
               TimeoutSeconds: 1800
