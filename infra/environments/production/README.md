@@ -3,6 +3,7 @@
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;
+- seleção automática de uma zona de disponibilidade que ofereça o tipo de instância configurado;
 - Security Group com somente HTTP de entrada enquanto não houver domínio;
 - EC2 Ubuntu com Docker, Compose, swap local de 2 GiB, IMDSv2 obrigatório e administração por
   Systems Manager;
