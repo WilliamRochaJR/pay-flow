@@ -13,6 +13,7 @@ import type { Account } from '../features/accounts/list-accounts/listAccounts.mo
 import { listAccounts } from '../features/accounts/list-accounts/listAccounts.service'
 import { TransferForm } from '../features/transfers/create-transfer/components/TransferForm'
 import { createTransfer } from '../features/transfers/create-transfer/createTransfer'
+import { createTransferIdempotencyKey } from '../features/transfers/create-transfer/createTransferIdempotencyKey'
 import type { CreateTransferInput } from '../features/transfers/create-transfer/createTransfer.model'
 import { TransferHistory } from '../features/transfers/list-transfers/components/TransferHistory'
 import type { Transfer } from '../features/transfers/list-transfers/listTransfers.model'
@@ -113,7 +114,7 @@ function AppRoutes() {
     try {
       const fingerprint = JSON.stringify(input)
       if (pendingTransfer.current?.fingerprint !== fingerprint) {
-        pendingTransfer.current = { fingerprint, key: crypto.randomUUID() }
+        pendingTransfer.current = { fingerprint, key: createTransferIdempotencyKey() }
       }
       await createTransfer(input, pendingTransfer.current.key, accessToken)
       pendingTransfer.current = null
