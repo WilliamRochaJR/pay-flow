@@ -159,7 +159,9 @@ jobs:
               Parameters: {
                 commands: [
                   "set -eu",
-                  "cloud-init status --wait || { tail -n 200 /var/log/cloud-init-output.log; exit 1; }",
+                  "cloud_init_status=0; cloud-init status --wait --long || cloud_init_status=$?; if [ \"$cloud_init_status\" -eq 1 ]; then tail -n 200 /var/log/cloud-init-output.log; exit 1; fi; if [ \"$cloud_init_status\" -eq 2 ]; then echo 'Cloud-init completed with recoverable errors; validating required tools.'; cloud-init status --long || true; fi",
+                  "for required_command in git docker aws; do command -v \"$required_command\" >/dev/null || { echo \"Missing required command: $required_command\"; exit 1; }; done",
+                  "docker compose version >/dev/null",
                   "install -d -m 0750 /opt/payflow",
                   "if [ ! -d /opt/payflow/repository/.git ]; then git clone https://github.com/WilliamRochaJR/pay-flow.git /opt/payflow/repository; fi",
                   "git -C /opt/payflow/repository fetch --prune origin",
