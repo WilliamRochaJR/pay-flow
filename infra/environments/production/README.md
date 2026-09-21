@@ -58,8 +58,9 @@ Revise recursos, região, tamanho da EC2 e custos antes de considerar `apply`. O
 revisão explícita do plano. A CI deste Pull Request executa apenas `fmt` e `validate`.
 
 Na operação normal, o workflow manual `AWS Ephemeral PoC` executa `plan`, `apply`, deploy, health check
-e `destroy`. Escolha um TTL de 20, 40 ou 60 minutos. Não execute `apply` local ao mesmo tempo, pois os
-dois processos compartilham o mesmo state e lock.
+e `destroy`. O TTL padrão é de 60 minutos; 20 e 40 minutos continuam disponíveis quando uma
+demonstração mais curta for suficiente. Não execute `apply` local ao mesmo tempo, pois os dois
+processos compartilham o mesmo state e lock.
 
 O workflow `AWS Ephemeral Cleanup` roda periodicamente e também aceita acionamento manual. Ele destrói
 o ambiente somente quando a concessão no S3 expirou; no acionamento manual, força a limpeza. Os
