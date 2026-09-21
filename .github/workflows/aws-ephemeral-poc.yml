@@ -6,7 +6,7 @@ on:
       ttl_minutes:
         description: Minutes to keep the healthy PoC online
         required: true
-        default: "20"
+        default: "60"
         type: choice
         options:
           - "20"

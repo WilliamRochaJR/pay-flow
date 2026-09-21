@@ -2,6 +2,7 @@
 
 - Status: Aceito
 - Data: 2026-08-15
+- Revisão: 2026-09-16 — TTL padrão ampliado para 60 minutos.
 
 ## Contexto
 
@@ -13,8 +14,9 @@ inclusive quando algum item estiver dentro do Free Tier. O projeto ainda não po
 
 Publicar a PoC por um workflow manual do GitHub Actions, protegido pelo Environment `production`. A
 execução provisiona a infraestrutura temporária com Terraform, implanta a revisão selecionada, valida
-o endpoint de saúde e mantém a aplicação disponível por um TTL de 20 minutos por padrão e 60 minutos
-no máximo. O TTL começa após a aplicação ficar saudável.
+o endpoint de saúde e mantém a aplicação disponível por um TTL de 60 minutos por padrão e no máximo.
+Os valores de 20 e 40 minutos continuam disponíveis para demonstrações mais curtas. O TTL começa após
+a aplicação ficar saudável.
 
 Ao final, inclusive depois de falhas, o workflow executa `terraform destroy`. Um workflow separado de
 limpeza de emergência poderá ser acionado manualmente, e uma execução agendada removerá ambientes cuja
