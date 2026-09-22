@@ -23,6 +23,26 @@ identidade da instância e bucket privado de backup. O state fica em um bucket S
 separado do ciclo de vida da aplicação. A CI valida a configuração, mas não executa `apply` em Pull
 Requests.
 
+## Evolução do fluxo de entrega
+
+O [ADR-0020](adr/0020-git-flow-environments-and-semantic-versioning.md) define a adoção incremental de
+Git Flow, versionamento semântico e promoção entre ambientes. A topologia AWS de cada estágio só será
+criada quando seu isolamento de state, identidade, configuração e dados estiver implementado.
+
+```mermaid
+flowchart LR
+    Feature[feature/*] -->|PR e CI| Develop[develop]
+    Develop -->|publicação opcional| Dev[development efêmero]
+    Develop --> Release[release/x.y.z]
+    Release -->|publicação para aceite| Hom[homologation efêmero]
+    Release -->|PR e CI| Main[main]
+    Main --> Tag[tag vX.Y.Z]
+    Tag -->|aprovação manual| Prod[production efêmero]
+```
+
+Pull Requests de feature não criam infraestrutura AWS. Development, homologation e production ficam
+desligados por padrão e usam TTL quando publicados, preservando o objetivo de baixo custo.
+
 ## Módulos do back-end
 
 ```text

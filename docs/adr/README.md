@@ -11,7 +11,7 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0005 — Transferências imutáveis e idempotentes](0005-immutable-idempotent-transfers.md)
 - [ADR-0006 — Front-end organizado por funcionalidades](0006-feature-based-frontend.md)
 - [ADR-0007 — Verificações locais rápidas e CI completa](0007-local-quality-gates-and-ci.md)
-- [ADR-0008 — GitHub Flow para desenvolvimento](0008-github-flow.md)
+- [ADR-0008 — GitHub Flow para desenvolvimento (substituído)](0008-github-flow.md)
 - [ADR-0009 — Cobertura e SonarQube como Quality Gate](0009-coverage-and-sonarqube-quality-gate.md)
 - [ADR-0010 — OpenAPI gerado a partir do código](0010-openapi-generated-from-code.md)
 - [ADR-0011 — Autenticação stateless com JWT](0011-stateless-jwt-authentication.md)
@@ -23,3 +23,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0017 — Rate limiting em memória no primeiro deploy](0017-in-memory-rate-limiting.md)
 - [ADR-0018 — GitHub Actions autentica na AWS com OIDC](0018-github-actions-aws-oidc.md)
 - [ADR-0019 — PoC AWS efêmera controlada por TTL](0019-ephemeral-aws-poc-with-ttl.md)
+- [ADR-0020 — Git Flow, promoção entre ambientes e versionamento semântico](0020-git-flow-environments-and-semantic-versioning.md)
