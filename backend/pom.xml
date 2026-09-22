@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.payflow</groupId>
     <artifactId>payflow-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>payflow-api</name>
     <description>PayFlow modular monolith API</description>
     <properties>
