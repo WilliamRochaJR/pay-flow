@@ -53,13 +53,17 @@ o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o 
 
 ## M2 — confiabilidade e qualidade
 
+- adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull Request;
+- Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
+- promoção por revisão entre `development`, `homologation` e `production`;
 - refresh token ou sessão renovável, se necessário;
 - paginação e filtros no histórico;
 - concorrência segura com lock/versionamento e testes concorrentes;
 - Testcontainers nas integrações;
 - métricas com Spring Boot Actuator e alarmes básicos;
 - análise estática e cobertura no CI;
-- evolução da infraestrutura como código para recursos gerenciados e múltiplos ambientes.
+- evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
+  de baixo custo.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
