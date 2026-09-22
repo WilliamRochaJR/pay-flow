@@ -37,9 +37,17 @@ Construir o PayFlow incrementalmente, preservando um produto executável ao fina
 - Antes de pedir autorização, apresentar resumidamente quais arquivos e mudanças entrarão no commit e sugerir a mensagem.
 - A autorização vale somente para o commit apresentado; alterações ou commits posteriores exigem uma nova confirmação.
 - Não adicionar `my-docs/` ao Git, nem mesmo com `git add -f`. Essa pasta é um caderno exclusivamente local.
-- Após a publicação inicial, seguir GitHub Flow: criar branch curta a partir de `main`, abrir Pull Request, aguardar a CI e somente então fazer merge.
-- Usar prefixos de branch coerentes com a mudança: `feature/`, `fix/`, `refactor/`, `test/`, `docs/` ou `ci/`.
-- Não criar branches permanentes `develop` ou `release` enquanto o projeto não tiver ciclos simultâneos de versão que justifiquem Git Flow clássico.
+- Seguir o Git Flow definido no ADR-0020. Mudanças comuns nascem de `develop` em branches curtas com
+  prefixos `feature/`, `fix/`, `refactor/`, `test/`, `docs/` ou `ci/` e retornam a `develop` por Pull
+  Request e CI.
+- Criar `release/<versão>` a partir de `develop`. Depois da estabilização, integrar por Pull Request em
+  `main`, criar a tag correspondente e sincronizar o resultado novamente com `develop`.
+- Criar `hotfix/<versão>` a partir de `main` e integrar a correção por Pull Request em `main` e
+  `develop`.
+- Nunca fazer push ou commit direto em `main` ou `develop`. Ambas são branches permanentes e
+  protegidas.
+- Não movimentar ou reutilizar tags publicadas. Correções exigem uma nova versão conforme Semantic
+  Versioning.
 
 ## Critério geral de conclusão
 
