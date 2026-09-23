@@ -112,3 +112,10 @@ duração, merges de sincronização e regras de proteção para manter.
 A separação lógica de ambientes não garante isolamento até que state, identidade, secrets e recursos
 tenham sido implementados separadamente. A estratégia efêmera reduz custo, mas exige nova publicação
 quando um ambiente for necessário e continua sujeita a limites e cobranças da AWS.
+
+## Estado de implementação
+
+Em 2026-09-23, as etapas 1 a 4 da migração foram concluídas com a publicação de `v0.1.0` e a
+sincronização de `main` para `develop`. O ambiente `production` continua sendo o único ambiente AWS
+implementado. `development` e `homologation` permanecem apenas planejados até possuírem isolamento e
+workflows próprios; a tabela de promoção não deve ser interpretada como infraestrutura já existente.

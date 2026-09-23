@@ -29,7 +29,7 @@ Critério de aceite: a partir de um clone limpo, um comando sobe o banco, a API 
 
 Status: implementado em 2026-08-10.
 
-## M1 — primeiro release público
+## M1 — primeiro release público ✅
 
 Objetivo: disponibilizar uma demonstração segura e reproduzível.
 
@@ -51,11 +51,14 @@ Critério de aceite: uma pessoa abre a URL pública temporária, cria usuário, 
 uma transferência e consulta o histórico. CI impede merge com testes quebrados, o deploy é repetível e
 o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o projeto adotar um domínio.
 
+Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
+
 ## M2 — confiabilidade e qualidade
 
-- adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull Request;
-- Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
-- promoção por revisão entre `development`, `homologation` e `production`;
+- [x] adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull
+      Request;
+- [x] Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
+- [ ] promoção por revisão entre `development`, `homologation` e `production`;
 - refresh token ou sessão renovável, se necessário;
 - paginação e filtros no histórico;
 - concorrência segura com lock/versionamento e testes concorrentes;
@@ -66,6 +69,9 @@ o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o 
   de baixo custo.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
+
+Próximo incremento: implementar primeiro a separação operacional descrita em
+[`docs/environments.md`](environments.md), mantendo os ambientes AWS efêmeros e desligados por padrão.
 
 ## M3 — eventos sem microserviços
 
