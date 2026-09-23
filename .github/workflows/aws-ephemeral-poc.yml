@@ -3,6 +3,17 @@ name: AWS Ephemeral PoC
 on:
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: Environment enabled for this deployment workflow
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+      revision:
+        description: Annotated release tag to deploy
+        required: true
+        type: string
       ttl_minutes:
         description: Minutes to keep the healthy PoC online
         required: true
@@ -18,28 +29,58 @@ permissions:
   id-token: write
 
 concurrency:
-  group: payflow-production-ephemeral
+  group: payflow-${{ inputs.target_environment }}-ephemeral
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Publish for ${{ inputs.ttl_minutes }} minutes
+    name: Publish ${{ inputs.revision }} to ${{ inputs.target_environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: production
+    environment: ${{ inputs.target_environment }}
     env:
       AWS_REGION: us-east-1
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      TF_WORKING_DIR: infra/environments/production
-      RUNTIME_PARAMETER: /payflow/production/runtime-env
-      LEASE_KEY: payflow/leases/production.json
 
     steps:
+      - name: Checkout deployment tooling
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate deployment context
+        id: context
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          .github/scripts/resolve-deployment-context.sh "$TARGET_ENVIRONMENT" "$REVISION"
+          test "$(git cat-file -t "refs/tags/$REVISION")" = 'tag' || {
+            echo 'Production requires an annotated release tag.'
+            exit 1
+          }
+
+      - name: Export deployment context
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: |
+          {
+            echo "TARGET_ENVIRONMENT=${{ steps.context.outputs.target_environment }}"
+            echo "TF_WORKING_DIR=${{ steps.context.outputs.tf_working_dir }}"
+            echo "TF_STATE_KEY=${{ steps.context.outputs.tf_state_key }}"
+            echo "RUNTIME_PARAMETER=${{ steps.context.outputs.runtime_parameter }}"
+            echo "LEASE_KEY=${{ steps.context.outputs.lease_key }}"
+            echo "PLAN_FILE=${{ steps.context.outputs.plan_file }}"
+            echo "REVISION_SHA=$(git rev-parse "${REVISION}^{commit}")"
+          } >> "$GITHUB_ENV"
+
       - name: Checkout selected revision
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.revision }}
 
-      - name: Validate production configuration
+      - name: Validate deployment configuration
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -72,7 +113,7 @@ jobs:
         run: >-
           terraform init
           -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}"
-          -backend-config="key=payflow/production/terraform.tfstate"
+          -backend-config="key=${TF_STATE_KEY}"
           -backend-config="region=${AWS_REGION}"
           -backend-config="use_lockfile=true"
           -backend-config="encrypt=true"
@@ -80,8 +121,8 @@ jobs:
       - name: Review and create ephemeral infrastructure
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform plan -out=production.tfplan
-          terraform apply -auto-approve production.tfplan
+          terraform plan -var="environment=${TARGET_ENVIRONMENT}" -out="$PLAN_FILE"
+          terraform apply -auto-approve "$PLAN_FILE"
 
       - name: Read infrastructure outputs
         id: infrastructure
@@ -147,7 +188,7 @@ jobs:
       - name: Deploy selected revision through SSM
         env:
           INSTANCE_ID: ${{ steps.infrastructure.outputs.instance_id }}
-          REVISION: ${{ github.sha }}
+          REVISION: ${{ env.REVISION_SHA }}
         run: |
           command_payload=$(jq -n \
             --arg instance "$INSTANCE_ID" \
@@ -229,8 +270,9 @@ jobs:
             --argjson expires_epoch "$expires_epoch" \
             --arg public_url "$PUBLIC_URL" \
             --arg run_id "$GITHUB_RUN_ID" \
-            --arg revision "$GITHUB_SHA" \
-            '{expires_at:$expires_at,expires_epoch:$expires_epoch,public_url:$public_url,run_id:$run_id,revision:$revision}' \
+            --arg revision "$REVISION_SHA" \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            '{expires_at:$expires_at,expires_epoch:$expires_epoch,public_url:$public_url,run_id:$run_id,revision:$revision,environment:$environment}' \
             > lease.json
           aws s3 cp lease.json "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY"
           {
@@ -262,9 +304,9 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=${{ vars.AWS_STATE_BUCKET }}" \
-            -backend-config="key=payflow/production/terraform.tfstate" \
+            -backend-config="key=${TF_STATE_KEY}" \
             -backend-config="region=${AWS_REGION}" \
             -backend-config="use_lockfile=true" \
             -backend-config="encrypt=true"
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var="environment=${TARGET_ENVIRONMENT}"
           aws s3 rm "s3://${{ vars.AWS_STATE_BUCKET }}/$LEASE_KEY"
