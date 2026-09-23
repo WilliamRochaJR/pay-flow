@@ -1,5 +1,9 @@
 # Ambiente production
 
+O workflow manual publica uma tag anotada `vX.Y.Z`, e não uma branch ou um commit arbitrário. No
+GitHub, selecione `production`, informe a tag publicada e escolha o TTL. A política é validada antes
+da autenticação AWS e rejeita revisões incompatíveis com o ambiente.
+
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;

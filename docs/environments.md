@@ -12,8 +12,10 @@ state, lease de TTL e dados.
 | `homologation` | `release/*`     | ainda não criado   | ainda não criada   | planejado          |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
-O workflow existente ainda permite selecionar uma revisão manualmente e publica somente no ambiente
-`production`. Ele continuará sendo a fonte operacional válida até a migração terminar.
+O workflow existente publica somente no ambiente `production` e exige uma tag anotada no formato
+`vX.Y.Z`. Ele continuará sendo a fonte operacional válida até a migração terminar. A política de
+deploy já conhece as combinações futuras, mas a interface não oferece `development` ou `homologation`
+enquanto o isolamento desses ambientes não estiver implementado.
 
 ## Fluxo-alvo
 
@@ -56,6 +58,9 @@ Nenhum banco, senha, token ou arquivo Terraform state será promovido entre ambi
 
 Extrair os valores hoje fixos em `production` para entradas controladas e mapas explícitos. O workflow
 deverá rejeitar combinações inválidas entre revisão e ambiente.
+
+Estado: implementado na política e no workflow. Somente `production` está habilitado na interface;
+os demais ambientes permanecem bloqueados até as etapas seguintes.
 
 ### 2. Criar `development`
 

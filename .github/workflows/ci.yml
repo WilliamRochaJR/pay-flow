@@ -25,6 +25,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Test deployment policy
+        working-directory: ${{ github.workspace }}
+        run: .github/scripts/resolve-deployment-context.test.sh
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
