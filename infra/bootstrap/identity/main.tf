@@ -118,14 +118,14 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
-    sid = "ManageEphemeralLease"
+    sid = "ManageEnvironmentLease"
     actions = [
       "s3:DeleteObject",
       "s3:GetObject",
       "s3:PutObject"
     ]
     resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/leases/*"
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/leases/${var.environment}.json"
     ]
   }
 }
@@ -229,15 +229,15 @@ data "aws_iam_policy_document" "github_infrastructure" {
   }
 
   statement {
-    sid = "ManageProductionStateAndLease"
+    sid = "ManageEnvironmentStateAndLease"
     actions = [
       "s3:DeleteObject",
       "s3:GetObject",
       "s3:PutObject"
     ]
     resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/production/*",
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/leases/*"
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/${var.environment}/*",
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/payflow/leases/${var.environment}.json"
     ]
   }
 

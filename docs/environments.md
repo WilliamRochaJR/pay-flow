@@ -67,6 +67,15 @@ os demais ambientes permanecem bloqueados até as etapas seguintes.
 Adicionar state, identidade, configuração e limpeza exclusivos. A publicação será manual a partir de
 `develop`, efêmera e sem aprovação obrigatória inicialmente.
 
+Preparação no repositório:
+
+- reutilizar o root Terraform parametrizado, sem copiar recursos;
+- state da aplicação em `payflow/development/terraform.tfstate`;
+- state da identidade em `payflow/bootstrap/development-identity.tfstate`;
+- roles `payflow-development-*` confiando somente no Environment `development`;
+- SSM `/payflow/development/runtime-env` e lease `payflow/leases/development.json`;
+- manter a opção de publicação bloqueada até concluir o bootstrap e cadastrar secrets/variables.
+
 ### 3. Criar `homologation`
 
 Adicionar o mesmo isolamento, mas aceitar somente revisões `release/*`. Esse ambiente serve para o
