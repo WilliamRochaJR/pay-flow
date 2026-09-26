@@ -9,9 +9,10 @@ on:
         default: production
         type: choice
         options:
+          - development
           - production
       revision:
-        description: Annotated release tag to deploy
+        description: develop for development or an annotated vX.Y.Z tag for production
         required: true
         type: string
       ttl_minutes:
@@ -56,10 +57,12 @@ jobs:
           REVISION: ${{ inputs.revision }}
         run: |
           .github/scripts/resolve-deployment-context.sh "$TARGET_ENVIRONMENT" "$REVISION"
-          test "$(git cat-file -t "refs/tags/$REVISION")" = 'tag' || {
-            echo 'Production requires an annotated release tag.'
-            exit 1
-          }
+          if [ "$TARGET_ENVIRONMENT" = 'production' ]; then
+            test "$(git cat-file -t "refs/tags/$REVISION")" = 'tag' || {
+              echo 'Production requires an annotated release tag.'
+              exit 1
+            }
+          fi
 
       - name: Export deployment context
         env:

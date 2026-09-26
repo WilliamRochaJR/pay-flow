@@ -8,14 +8,13 @@ state, lease de TTL e dados.
 
 | Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
 | -------------- | --------------- | ------------------ | ------------------ | ------------------ |
-| `development`  | `develop`       | ainda não criado   | ainda não criada   | planejado          |
+| `development`  | `develop`       | configurado        | efêmera com TTL    | pronto para teste  |
 | `homologation` | `release/*`     | ainda não criado   | ainda não criada   | planejado          |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
-O workflow existente publica somente no ambiente `production` e exige uma tag anotada no formato
-`vX.Y.Z`. Ele continuará sendo a fonte operacional válida até a migração terminar. A política de
-deploy já conhece as combinações futuras, mas a interface não oferece `development` ou `homologation`
-enquanto o isolamento desses ambientes não estiver implementado.
+O workflow publica `develop` em `development` e exige uma tag anotada `vX.Y.Z` para `production`.
+`homologation` continua bloqueado até possuir isolamento equivalente. O watchdog agendado permanece
+em produção; development é destruído ao final do próprio job e possui limpeza manual de emergência.
 
 ## Fluxo-alvo
 
@@ -59,8 +58,8 @@ Nenhum banco, senha, token ou arquivo Terraform state será promovido entre ambi
 Extrair os valores hoje fixos em `production` para entradas controladas e mapas explícitos. O workflow
 deverá rejeitar combinações inválidas entre revisão e ambiente.
 
-Estado: implementado na política e no workflow. Somente `production` está habilitado na interface;
-os demais ambientes permanecem bloqueados até as etapas seguintes.
+Estado: implementado na política e no workflow. `production` e `development` estão habilitados;
+`homologation` permanece bloqueado até a etapa seguinte.
 
 ### 2. Criar `development`
 
@@ -74,7 +73,11 @@ Preparação no repositório:
 - state da identidade em `payflow/bootstrap/development-identity.tfstate`;
 - roles `payflow-development-*` confiando somente no Environment `development`;
 - SSM `/payflow/development/runtime-env` e lease `payflow/leases/development.json`;
-- manter a opção de publicação bloqueada até concluir o bootstrap e cadastrar secrets/variables.
+- a opção de publicação permaneceu bloqueada até a conclusão do bootstrap e o cadastro de
+  secrets/variables.
+
+Estado: identidade AWS e GitHub Environment configurados. A publicação e a limpeza manual estão
+habilitadas; falta executar o primeiro teste efêmero e confirmar a destruição ao final do TTL.
 
 ### 3. Criar `homologation`
 
@@ -100,6 +103,5 @@ state ou banco. Pull Requests comuns executam apenas validação e não criam re
 
 ## Critério de conclusão do primeiro incremento
 
-O planejamento estará pronto quando o estado real estiver documentado, sem representar ambientes
-planejados como existentes. A implementação seguinte deverá começar por `development`, provar seu
-isolamento e sua limpeza automática e somente depois repetir o padrão para `homologation`.
+O primeiro incremento será concluído quando `development` comprovar em uma execução real seu
+isolamento e sua limpeza automática. Somente depois o mesmo padrão será aplicado a `homologation`.
