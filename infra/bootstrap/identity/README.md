@@ -79,6 +79,29 @@ Os ARNs identificam roles e não são secrets. A role de deploy executa somente 
 infraestrutura gerencia os recursos temporários do módulo `production`, seu state e a concessão de
 TTL. Ela não gerencia o bootstrap persistente nem o AWS Budget.
 
+## Preparar a identidade de development
+
+`development` reutiliza o mesmo código Terraform, mas possui state e roles separados. Não reutilize o
+state de produção.
+
+```bash
+cd infra/bootstrap/identity
+cp backend.development.hcl.example backend.development.hcl
+cp terraform.development.tfvars.example terraform.development.tfvars
+terraform init -reconfigure -backend-config=backend.development.hcl
+terraform plan -var-file=terraform.development.tfvars -out=development-identity.tfplan
+terraform show development-identity.tfplan
+terraform apply development-identity.tfplan
+```
+
+Antes do `plan`, substitua o bucket, o ARN do provider OIDC existente e confirme os IDs imutáveis do
+GitHub. O state usa `payflow/bootstrap/development-identity.tfstate`; as roles resultantes começam com
+`payflow-development-` e confiam somente no GitHub Environment `development`.
+
+Os outputs `github_deploy_role_arn` e `github_infrastructure_role_arn` devem ser cadastrados como
+variables do Environment `development`, nunca como secrets. Esse procedimento será executado somente
+depois da revisão do código.
+
 ## Validar sem acessar a AWS
 
 ```bash

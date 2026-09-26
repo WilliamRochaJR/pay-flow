@@ -4,6 +4,10 @@ O workflow manual publica uma tag anotada `vX.Y.Z`, e não uma branch ou um comm
 GitHub, selecione `production`, informe a tag publicada e escolha o TTL. A política é validada antes
 da autenticação AWS e rejeita revisões incompatíveis com o ambiente.
 
+Apesar do nome histórico desta pasta, o root Terraform é parametrizado por `environment` e será
+reutilizado por ambientes efêmeros. O isolamento vem da chave de state, do valor da variável
+`environment`, das roles, dos parâmetros e dos dados — não de copiar os mesmos arquivos Terraform.
+
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;

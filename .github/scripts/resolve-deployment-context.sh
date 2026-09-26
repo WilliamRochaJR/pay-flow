@@ -30,7 +30,7 @@ esac
 output_file=${GITHUB_OUTPUT:-/dev/stdout}
 {
   echo "target_environment=$target_environment"
-  echo "tf_working_dir=infra/environments/$target_environment"
+  echo "tf_working_dir=infra/environments/production"
   echo "tf_state_key=payflow/$target_environment/terraform.tfstate"
   echo "runtime_parameter=/payflow/$target_environment/runtime-env"
   echo "lease_key=payflow/leases/$target_environment.json"

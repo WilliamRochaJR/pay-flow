@@ -6,14 +6,24 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 resolver="$script_dir/resolve-deployment-context.sh"
 
 expect_success() {
-  GITHUB_OUTPUT=$(mktemp) "$resolver" "$1" "$2"
+  output_file=$(mktemp)
+  GITHUB_OUTPUT="$output_file" "$resolver" "$1" "$2"
+  grep --fixed-strings --quiet "target_environment=$1" "$output_file"
+  grep --fixed-strings --quiet "tf_working_dir=infra/environments/production" "$output_file"
+  grep --fixed-strings --quiet "tf_state_key=payflow/$1/terraform.tfstate" "$output_file"
+  grep --fixed-strings --quiet "runtime_parameter=/payflow/$1/runtime-env" "$output_file"
+  grep --fixed-strings --quiet "lease_key=payflow/leases/$1.json" "$output_file"
+  rm -f "$output_file"
 }
 
 expect_failure() {
-  if GITHUB_OUTPUT=$(mktemp) "$resolver" "$1" "$2" 2>/dev/null; then
+  output_file=$(mktemp)
+  if GITHUB_OUTPUT="$output_file" "$resolver" "$1" "$2" 2>/dev/null; then
+    rm -f "$output_file"
     echo "Expected policy rejection for environment '$1' and revision '$2'." >&2
     exit 1
   fi
+  rm -f "$output_file"
 }
 
 expect_success development develop
