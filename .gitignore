@@ -26,6 +26,7 @@ frontend/*.tsbuildinfo
 *.tfvars
 !*.tfvars.example
 **/backend.hcl
+**/backend.*.hcl
 crash.log
 override.tf
 override.tf.json
