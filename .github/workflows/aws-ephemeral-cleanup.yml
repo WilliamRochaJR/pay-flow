@@ -2,6 +2,15 @@ name: AWS Ephemeral Cleanup
 
 on:
   workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Environment to clean up manually
+        required: true
+        default: production
+        type: choice
+        options:
+          - development
+          - production
   schedule:
     - cron: "*/10 * * * *"
 
@@ -10,24 +19,41 @@ permissions:
   id-token: write
 
 concurrency:
-  group: payflow-production-ephemeral
+  group: >-
+    payflow-${{
+      github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production'
+    }}-ephemeral
   cancel-in-progress: false
 
 jobs:
   cleanup:
-    name: Remove expired AWS PoC
+    name: >-
+      Remove ${{
+        github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production'
+      }} AWS PoC
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: production
+    environment: >-
+      ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production' }}
     env:
       AWS_REGION: us-east-1
-      TARGET_ENVIRONMENT: production
+      TARGET_ENVIRONMENT: >-
+        ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production' }}
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
       TF_WORKING_DIR: infra/environments/production
-      TF_STATE_KEY: payflow/production/terraform.tfstate
-      RUNTIME_PARAMETER: /payflow/production/runtime-env
-      LEASE_KEY: payflow/leases/production.json
+      TF_STATE_KEY: >-
+        payflow/${{
+          github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production'
+        }}/terraform.tfstate
+      RUNTIME_PARAMETER: >-
+        /payflow/${{
+          github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production'
+        }}/runtime-env
+      LEASE_KEY: >-
+        payflow/leases/${{
+          github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production'
+        }}.json
 
     steps:
       - name: Checkout

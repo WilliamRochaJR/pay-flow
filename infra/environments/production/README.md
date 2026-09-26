@@ -8,6 +8,10 @@ Apesar do nome histórico desta pasta, o root Terraform é parametrizado por `en
 reutilizado por ambientes efêmeros. O isolamento vem da chave de state, do valor da variável
 `environment`, das roles, dos parâmetros e dos dados — não de copiar os mesmos arquivos Terraform.
 
+Para `development`, execute o workflow na branch `develop`, selecione o ambiente `development` e use
+a revisão `develop`. A própria execução destrói o ambiente depois do TTL. O workflow de limpeza pode
+ser acionado manualmente na branch `develop` em caso de interrupção da publicação.
+
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;
