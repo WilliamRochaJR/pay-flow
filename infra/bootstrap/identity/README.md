@@ -102,6 +102,24 @@ Os outputs `github_deploy_role_arn` e `github_infrastructure_role_arn` devem ser
 variables do Environment `development`, nunca como secrets. Esse procedimento será executado somente
 depois da revisão do código.
 
+## Preparar a identidade de homologation
+
+`homologation` também reutiliza o módulo, mas aceita somente branches `release/X.Y.Z` e não compartilha
+state, roles ou dados com os outros ambientes.
+
+```bash
+cd infra/bootstrap/identity
+cp backend.homologation.hcl.example backend.homologation.hcl
+cp terraform.homologation.tfvars.example terraform.homologation.tfvars
+terraform init -reconfigure -backend-config=backend.homologation.hcl
+terraform plan -var-file=terraform.homologation.tfvars -out=homologation-identity.tfplan
+terraform show homologation-identity.tfplan
+```
+
+O state usa `payflow/bootstrap/homologation-identity.tfstate`; as roles planejadas começam com
+`payflow-homologation-` e confiam somente no GitHub Environment `homologation`. O `apply` não faz parte
+desta preparação: ele exige revisão do plano e autorização explícita.
+
 ## Validar sem acessar a AWS
 
 ```bash
