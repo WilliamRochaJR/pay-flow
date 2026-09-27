@@ -10,9 +10,10 @@ on:
         type: choice
         options:
           - development
+          - homologation
           - production
       revision:
-        description: develop for development or an annotated vX.Y.Z tag for production
+        description: develop, release/X.Y.Z or an annotated vX.Y.Z tag
         required: true
         type: string
       ttl_minutes:
