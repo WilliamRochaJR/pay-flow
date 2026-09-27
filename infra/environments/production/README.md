@@ -12,6 +12,9 @@ Para `development`, execute o workflow na branch `develop`, selecione o ambiente
 a revisão `develop`. A própria execução destrói o ambiente depois do TTL. O workflow de limpeza pode
 ser acionado manualmente na branch `develop` em caso de interrupção da publicação.
 
+Para `homologation`, execute o workflow a partir de uma branch `release/X.Y.Z`, selecione o ambiente
+`homologation` e informe a mesma branch como revisão. A política rejeita outras combinações.
+
 ## O que este módulo cria
 
 - VPC e subnet pública sem NAT Gateway;

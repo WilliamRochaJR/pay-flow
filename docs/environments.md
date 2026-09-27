@@ -9,12 +9,12 @@ state, lease de TTL e dados.
 | Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
 | -------------- | --------------- | ------------------ | ------------------ | ------------------ |
 | `development`  | `develop`       | configurado        | efêmera com TTL    | validado           |
-| `homologation` | `release/*`     | ainda não criado   | código preparado   | em preparação      |
+| `homologation` | `release/*`     | configurado        | efêmera com TTL    | pronto para teste  |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
-O workflow publica `develop` em `development` e exige uma tag anotada `vX.Y.Z` para `production`.
-`homologation` continua bloqueado até possuir isolamento equivalente. O watchdog agendado permanece
-em produção; development é destruído ao final do próprio job e possui limpeza manual de emergência.
+O workflow publica `develop` em `development`, `release/X.Y.Z` em `homologation` e exige uma tag
+anotada `vX.Y.Z` para `production`. O watchdog agendado permanece em produção; os demais ambientes
+são destruídos ao final do próprio job e possuem limpeza manual de emergência.
 
 ## Fluxo-alvo
 
@@ -58,8 +58,7 @@ Nenhum banco, senha, token ou arquivo Terraform state será promovido entre ambi
 Extrair os valores hoje fixos em `production` para entradas controladas e mapas explícitos. O workflow
 deverá rejeitar combinações inválidas entre revisão e ambiente.
 
-Estado: implementado na política e no workflow. `production` e `development` estão habilitados;
-`homologation` permanece bloqueado até a etapa seguinte.
+Estado: implementado na política e no workflow para os três ambientes.
 
 ### 2. Criar `development`
 
@@ -108,8 +107,9 @@ Preparação no repositório:
 - reservar SSM `/payflow/homologation/runtime-env` e lease `payflow/leases/homologation.json`;
 - manter a opção de publicação bloqueada até concluir identidade, Environment e secrets.
 
-Estado: exemplos de backend e variáveis preparados. Ainda não houve `plan`, `apply` ou criação do
-GitHub Environment.
+Estado: identidade AWS e GitHub Environment configurados. A publicação e a limpeza manual estão
+habilitadas; falta criar uma branch `release/X.Y.Z`, executar o primeiro teste efêmero e confirmar a
+destruição ao final do TTL.
 
 ### 4. Restringir `production`
 
