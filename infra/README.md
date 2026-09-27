@@ -27,6 +27,8 @@ perfil IAM da instância e bucket privado para backups. Ele não executa o deplo
 cria recursos ao rodar os testes da CI.
 
 Consulte [production/README.md](environments/production/README.md) antes de executar Terraform.
+Os exemplos específicos de identidade para `development` e `homologation` ficam em
+`bootstrap/identity`, mas os respectivos arquivos reais permanecem ignorados pelo Git.
 
 ## Ordem de preparação
 

@@ -9,7 +9,7 @@ state, lease de TTL e dados.
 | Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
 | -------------- | --------------- | ------------------ | ------------------ | ------------------ |
 | `development`  | `develop`       | configurado        | efêmera com TTL    | validado           |
-| `homologation` | `release/*`     | ainda não criado   | ainda não criada   | planejado          |
+| `homologation` | `release/*`     | ainda não criado   | código preparado   | em preparação      |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
 O workflow publica `develop` em `development` e exige uma tag anotada `vX.Y.Z` para `production`.
@@ -98,6 +98,18 @@ A URL e os dados da aplicação eram efêmeros e não são tratados como artefat
 
 Adicionar o mesmo isolamento, mas aceitar somente revisões `release/*`. Esse ambiente serve para o
 aceite da versão candidata antes do merge na `main`.
+
+Preparação no repositório:
+
+- reutilizar o mesmo root Terraform parametrizado;
+- state da aplicação em `payflow/homologation/terraform.tfstate`;
+- state da identidade em `payflow/bootstrap/homologation-identity.tfstate`;
+- planejar roles `payflow-homologation-*` confiando somente no Environment `homologation`;
+- reservar SSM `/payflow/homologation/runtime-env` e lease `payflow/leases/homologation.json`;
+- manter a opção de publicação bloqueada até concluir identidade, Environment e secrets.
+
+Estado: exemplos de backend e variáveis preparados. Ainda não houve `plan`, `apply` ou criação do
+GitHub Environment.
 
 ### 4. Restringir `production`
 
