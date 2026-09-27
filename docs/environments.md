@@ -9,7 +9,7 @@ state, lease de TTL e dados.
 | Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
 | -------------- | --------------- | ------------------ | ------------------ | ------------------ |
 | `development`  | `develop`       | configurado        | efêmera com TTL    | validado           |
-| `homologation` | `release/*`     | configurado        | efêmera com TTL    | pronto para teste  |
+| `homologation` | `release/*`     | configurado        | efêmera com TTL    | aceite aprovado    |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
 O workflow publica `develop` em `development`, `release/X.Y.Z` em `homologation` e exige uma tag
@@ -107,9 +107,18 @@ Preparação no repositório:
 - reservar SSM `/payflow/homologation/runtime-env` e lease `payflow/leases/homologation.json`;
 - manter a opção de publicação bloqueada até concluir identidade, Environment e secrets.
 
-Estado: identidade AWS e GitHub Environment configurados. A publicação e a limpeza manual estão
-habilitadas; falta criar uma branch `release/X.Y.Z`, executar o primeiro teste efêmero e confirmar a
-destruição ao final do TTL.
+Estado: concluído e aprovado funcionalmente em 2026-09-27. A confirmação da destruição automática
+será registrada após o encerramento do primeiro TTL.
+
+#### Evidência do primeiro ciclo
+
+A execução [GitHub Actions #36341890422](https://github.com/WilliamRochaJR/pay-flow/actions/runs/36341890422)
+publicou o merge commit `944cf34` da branch `release/0.2.0`. O health check público retornou `UP` e o
+TTL de 60 minutos só começou depois que a aplicação ficou saudável.
+
+O aceite manual confirmou os fluxos de cadastro, login e transferência. A URL, o banco e os dados
+usados nesse teste são efêmeros e não serão promovidos. A promoção para produção usará a revisão
+validada, posteriormente identificada pela tag anotada `v0.2.0`.
 
 ### 4. Restringir `production`
 
@@ -130,5 +139,5 @@ state ou banco. Pull Requests comuns executam apenas validação e não criam re
 
 ## Critério de conclusão do primeiro incremento
 
-O primeiro incremento foi concluído com a validação de `development`. O próximo incremento aplica o
-mesmo padrão de isolamento e TTL a `homologation`.
+Os ciclos de `development` e `homologation` foram publicados e validados. O próximo incremento promove
+a revisão aceita para `production` por meio da tag anotada `v0.2.0`.
