@@ -8,7 +8,7 @@ state, lease de TTL e dados.
 
 | Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
 | -------------- | --------------- | ------------------ | ------------------ | ------------------ |
-| `development`  | `develop`       | configurado        | efêmera com TTL    | pronto para teste  |
+| `development`  | `develop`       | configurado        | efêmera com TTL    | validado           |
 | `homologation` | `release/*`     | ainda não criado   | ainda não criada   | planejado          |
 | `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
 
@@ -76,8 +76,23 @@ Preparação no repositório:
 - a opção de publicação permaneceu bloqueada até a conclusão do bootstrap e o cadastro de
   secrets/variables.
 
-Estado: identidade AWS e GitHub Environment configurados. A publicação e a limpeza manual estão
-habilitadas; falta executar o primeiro teste efêmero e confirmar a destruição ao final do TTL.
+Estado: concluído e validado em 2026-09-27.
+
+#### Evidência do primeiro ciclo
+
+A execução [GitHub Actions #36289398433](https://github.com/WilliamRochaJR/pay-flow/actions/runs/36289398433)
+publicou o commit `85982b1` da branch `develop` com TTL de 20 minutos. O health check público retornou
+`UP` antes do início do TTL.
+
+Ao final, todas as etapas de limpeza passaram. A verificação posterior confirmou:
+
+- nenhuma instância EC2 ativa com `Project=payflow` e `Environment=development`;
+- nenhum Elastic IP de `development` alocado;
+- lease `payflow/leases/development.json` removido;
+- parâmetro `/payflow/development/runtime-env` removido;
+- workflow concluído com sucesso.
+
+A URL e os dados da aplicação eram efêmeros e não são tratados como artefatos promovíveis.
 
 ### 3. Criar `homologation`
 
@@ -103,5 +118,5 @@ state ou banco. Pull Requests comuns executam apenas validação e não criam re
 
 ## Critério de conclusão do primeiro incremento
 
-O primeiro incremento será concluído quando `development` comprovar em uma execução real seu
-isolamento e sua limpeza automática. Somente depois o mesmo padrão será aplicado a `homologation`.
+O primeiro incremento foi concluído com a validação de `development`. O próximo incremento aplica o
+mesmo padrão de isolamento e TTL a `homologation`.
