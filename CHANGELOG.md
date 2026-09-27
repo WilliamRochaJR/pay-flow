@@ -31,7 +31,8 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 ### Observações
 
 - desenvolvimento foi validado ponta a ponta e destruído após o teste;
-- homologação está configurada para receber esta candidata antes da publicação em produção.
+- a candidata `release/0.2.0` foi publicada e aprovada funcionalmente em homologação antes da
+  promoção para produção.
 
 ## [0.1.0] - 2026-09-22
 

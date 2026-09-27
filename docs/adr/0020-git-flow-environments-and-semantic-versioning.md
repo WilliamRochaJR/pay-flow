@@ -116,6 +116,7 @@ quando um ambiente for necessário e continua sujeita a limites e cobranças da 
 ## Estado de implementação
 
 Em 2026-09-23, as etapas 1 a 4 da migração foram concluídas com a publicação de `v0.1.0` e a
-sincronização de `main` para `develop`. O ambiente `production` continua sendo o único ambiente AWS
-implementado. `development` e `homologation` permanecem apenas planejados até possuírem isolamento e
-workflows próprios; a tabela de promoção não deve ser interpretada como infraestrutura já existente.
+sincronização de `main` para `develop`. Em 2026-09-27, `development` e `homologation` receberam state,
+identidades OIDC, configuração e workflows isolados. O ciclo de desenvolvimento foi validado e
+destruído; a candidata `release/0.2.0` foi aceita em homologação e ficou sujeita ao mesmo TTL e à
+limpeza automática.
