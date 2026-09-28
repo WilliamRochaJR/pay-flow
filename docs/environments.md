@@ -107,8 +107,7 @@ Preparação no repositório:
 - reservar SSM `/payflow/homologation/runtime-env` e lease `payflow/leases/homologation.json`;
 - manter a opção de publicação bloqueada até concluir identidade, Environment e secrets.
 
-Estado: concluído e aprovado funcionalmente em 2026-09-27. A confirmação da destruição automática
-será registrada após o encerramento do primeiro TTL.
+Estado: concluído, aprovado funcionalmente e destruído automaticamente em 2026-09-27.
 
 #### Evidência do primeiro ciclo
 
@@ -119,6 +118,10 @@ TTL de 60 minutos só começou depois que a aplicação ficou saudável.
 O aceite manual confirmou os fluxos de cadastro, login e transferência. A URL, o banco e os dados
 usados nesse teste são efêmeros e não serão promovidos. A promoção para produção usará a revisão
 validada, posteriormente identificada pela tag anotada `v0.2.0`.
+
+Ao final do TTL, a mesma execução removeu o parâmetro seguro do runtime, executou `terraform destroy`
+e concluiu todas as etapas de limpeza com sucesso. O ambiente deixou de permanecer acessível e sua
+lease foi removida do bucket de state.
 
 ### 4. Restringir `production`
 
