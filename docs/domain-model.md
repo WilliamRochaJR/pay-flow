@@ -1,6 +1,7 @@
 # Modelo de classes
 
-Este documento representa o modelo **implementado atualmente no M0**. Ele separa entidades persistidas, objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
+Este documento representa o modelo implementado até o **M2**. Ele separa entidades persistidas,
+objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
 
@@ -68,8 +69,18 @@ classDiagram
 
     class TransferService {
         +create(request) TransferResponse
-        +list() List
+        +list(ownerId, page, size, status, from, to) TransferPageResponse
         +find(id) TransferResponse
+    }
+
+    class TransferPageResponse {
+        +List~TransferResponse~ content
+        +int page
+        +int size
+        +long totalElements
+        +int totalPages
+        +boolean first
+        +boolean last
     }
 
     class User {
@@ -100,6 +111,8 @@ classDiagram
     TransferResponse "0..*" --> "1" TransferStatus : expõe
     TransferService ..> CreateTransferRequest : recebe
     TransferService ..> TransferResponse : devolve
+    TransferService ..> TransferPageResponse : devolve página
+    TransferPageResponse "1" o-- "0..*" TransferResponse : contém
     TransferService ..> Account : debita e credita
     TransferService ..> Transfer : cria e persiste
     AuthService ..> User : cadastra e consulta

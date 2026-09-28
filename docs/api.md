@@ -31,6 +31,22 @@ GET  /api/v1/transfers
 GET  /api/v1/transfers/{transferId}
 ```
 
+A listagem é paginada e ordenada da transferência mais recente para a mais antiga:
+
+```http
+GET /api/v1/transfers?page=0&size=5&from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59.999Z
+```
+
+- `page`: página baseada em zero;
+- `size`: entre 1 e 50, com padrão 5;
+- `from` e `to`: instantes ISO-8601 opcionais e inclusivos;
+- `status`: filtro opcional preparado para os estados do domínio; atualmente o único valor é
+  `COMPLETED`.
+
+A resposta contém `content`, `page`, `size`, `totalElements`, `totalPages`, `first` e `last`. Isso
+evita carregar um histórico ilimitado no navegador e mantém o contrato independente da representação
+interna do Spring Data.
+
 Exemplo de criação:
 
 ```json

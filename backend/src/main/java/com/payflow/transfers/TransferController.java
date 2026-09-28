@@ -14,15 +14,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.format.annotation.DateTimeFormat;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
 
-import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/transfers")
 @Tag(name = "Transferências", description = "Criação e consulta de transferências fictícias")
+@Validated
 public class TransferController {
 
     private final TransferService service;
@@ -47,8 +53,21 @@ public class TransferController {
     @GetMapping
     @Operation(summary = "Listar transferências")
     @SecurityRequirement(name = "bearerAuth")
-    List<TransferResponse> list(@AuthenticationPrincipal Jwt jwt) {
-        return service.list(UUID.fromString(jwt.getSubject()));
+    TransferPageResponse list(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "5") @Min(1) @Max(50) int size,
+            @RequestParam(required = false) TransferStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.list(
+                UUID.fromString(jwt.getSubject()),
+                page,
+                size,
+                status,
+                from == null ? null : from.toInstant(),
+                to == null ? null : to.toInstant()
+        );
     }
 
     @GetMapping("/{id}")

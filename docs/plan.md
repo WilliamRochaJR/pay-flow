@@ -60,11 +60,11 @@ Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 - [x] Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
 - [x] promoção por revisão entre `development`, `homologation` e `production`;
 - refresh token ou sessão renovável, se necessário;
-- paginação e filtros no histórico;
+- [x] paginação e filtros por período no histórico, com ordenação mais recente primeiro;
 - concorrência segura com lock/versionamento e testes concorrentes;
-- Testcontainers nas integrações;
+- [x] Testcontainers com PostgreSQL real nos testes de integração;
 - métricas com Spring Boot Actuator e alarmes básicos;
-- análise estática e cobertura no CI;
+- [x] análise estática, SonarQube e cobertura no CI;
 - evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
   de baixo custo.
 
