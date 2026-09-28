@@ -288,10 +288,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           sleep "${TTL_MINUTES}m"
 
-      - name: Remove encrypted runtime configuration
+      - name: Refresh AWS credentials for runtime cleanup
         if: ${{ always() }}
-        continue-on-error: true
-        run: aws ssm delete-parameter --name "$RUNTIME_PARAMETER"
+        id: runtime_cleanup_credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          retry-max-attempts: 3
+
+      - name: Remove encrypted runtime configuration
+        if: ${{ always() && steps.runtime_cleanup_credentials.outcome == 'success' }}
+        run: aws ssm delete-parameters --names "$RUNTIME_PARAMETER"
 
       - name: Configure AWS credentials for cleanup
         if: ${{ always() }}
@@ -301,6 +309,22 @@ jobs:
           role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           retry-max-attempts: 3
+
+      - name: Verify encrypted runtime configuration cleanup
+        if: ${{ always() && steps.cleanup_credentials.outcome == 'success' }}
+        run: |
+          error_file=$(mktemp)
+          if aws ssm get-parameter --name "$RUNTIME_PARAMETER" > /dev/null 2> "$error_file"; then
+            echo "The runtime parameter still exists after cleanup: $RUNTIME_PARAMETER"
+            exit 1
+          fi
+          if grep --quiet 'ParameterNotFound' "$error_file"; then
+            echo "Runtime parameter cleanup verified: $RUNTIME_PARAMETER"
+            exit 0
+          fi
+          cat "$error_file" >&2
+          echo "Unable to verify runtime parameter cleanup: $RUNTIME_PARAMETER" >&2
+          exit 1
 
       - name: Destroy ephemeral infrastructure
         if: ${{ always() && steps.cleanup_credentials.outcome == 'success' }}
