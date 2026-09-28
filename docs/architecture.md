@@ -42,6 +42,7 @@ flowchart LR
 
 Pull Requests de feature não criam infraestrutura AWS. Development, homologation e production ficam
 desligados por padrão e usam TTL quando publicados, preservando o objetivo de baixo custo.
+O estado atual e a ordem segura de implementação estão em [Ambientes e promoção](environments.md).
 
 ## Módulos do back-end
 

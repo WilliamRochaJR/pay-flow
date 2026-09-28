@@ -112,3 +112,11 @@ duração, merges de sincronização e regras de proteção para manter.
 A separação lógica de ambientes não garante isolamento até que state, identidade, secrets e recursos
 tenham sido implementados separadamente. A estratégia efêmera reduz custo, mas exige nova publicação
 quando um ambiente for necessário e continua sujeita a limites e cobranças da AWS.
+
+## Estado de implementação
+
+Em 2026-09-23, as etapas 1 a 4 da migração foram concluídas com a publicação de `v0.1.0` e a
+sincronização de `main` para `develop`. Em 2026-09-27, `development` e `homologation` receberam state,
+identidades OIDC, configuração e workflows isolados. O ciclo de desenvolvimento foi validado e
+destruído; a candidata `release/0.2.0` foi aceita em homologação e ficou sujeita ao mesmo TTL e à
+limpeza automática.

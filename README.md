@@ -73,13 +73,16 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 - [Contrato inicial da API](docs/api.md)
 - [Histórico de versões](CHANGELOG.md)
 - [Processo de release](docs/releases/README.md)
+- [Ambientes e promoção](docs/environments.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 - [Infraestrutura AWS com Terraform](infra/README.md)
 - [Runtime de produção com Compose e Caddy](deploy/README.md)
 
 ## Estado
 
-M0 implementado para execução local. O próximo marco é o M1: autenticação, endurecimento operacional e publicação na AWS.
+M0 e M1 concluídos. A versão [`v0.1.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.1.0)
+formaliza o primeiro release público. O trabalho atual está no M2, começando pela promoção controlada
+entre ambientes sem manter infraestrutura AWS ligada permanentemente.
 
 ## Licença
 

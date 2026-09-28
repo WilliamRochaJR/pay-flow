@@ -225,4 +225,6 @@ O método do serviço é transacional: débito, crédito e criação da transfer
 
 ## Evolução planejada
 
-O modelo acima mostra somente o que existe no código. A chave de idempotência e o estorno pertencem aos próximos passos do M1 e devem ser adicionados ao diagrama apenas quando forem implementados.
+O modelo acima mostra somente o que existe no código. A chave de idempotência já protege a criação de
+transferências. O estorno permanece planejado e deverá entrar no diagrama somente quando for
+implementado como uma nova operação, sem alterar transferências concluídas.
