@@ -71,9 +71,9 @@ Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
 Estado da promoção: `development` foi publicado e destruído com sucesso em 2026-09-27. A candidata
-`release/0.2.0` também foi publicada e aprovada em `homologation` na mesma data. O próximo incremento
-é criar a tag anotada `v0.2.0` e promover essa revisão para `production`, mantendo todos os ambientes
-AWS efêmeros e desligados por padrão.
+`release/0.2.0` também foi publicada, aprovada e destruída automaticamente em `homologation` na mesma
+data. O próximo incremento é criar a tag anotada `v0.2.0` e promover essa revisão para `production`,
+mantendo todos os ambientes AWS efêmeros e desligados por padrão.
 
 ## M3 — eventos sem microserviços
 
