@@ -63,7 +63,8 @@ Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 - [x] paginação e filtros por período no histórico, com ordenação mais recente primeiro;
 - [x] concorrência segura com lock pessimista, versionamento e testes concorrentes;
 - [x] Testcontainers com PostgreSQL real nos testes de integração;
-- métricas com Spring Boot Actuator e alarmes básicos;
+- [x] métricas de transferência com Spring Boot Actuator e alarmes CloudWatch declarados;
+- [ ] validar os alarmes CloudWatch no próximo ciclo efêmero após atualizar a role de infraestrutura;
 - [x] análise estática, SonarQube e cobertura no CI;
 - evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
   de baixo custo.
