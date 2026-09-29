@@ -50,7 +50,7 @@ O estado atual e a ordem segura de implementação estão em [Ambientes e promo�
 auth          cadastro, login e tokens
 accounts      propriedade e consulta de saldo
 transfers     regras e execução atômica
-events        contrato, outbox e relay opcional para Kafka local
+events        contrato, outbox, relay e auditoria opcional por Kafka local
 shared        erros e infraestrutura transversal mínima
 ```
 
@@ -78,6 +78,8 @@ O front-end é organizado por domínio e caso de uso. Cada caso pode conter mode
 - `accounts`: proprietário, moeda e saldo atual.
 - `transfers`: origem, destino, valor, status, chave de idempotência e timestamps.
 - `outbox_events`: eventos de domínio gravados atomicamente e ainda não publicados.
+- `processed_events`: eventos reivindicados por consumidor para impedir efeitos duplicados.
+- `audit_events`: projeção consultável dos eventos de transferência consumidos.
 
 Restrições essenciais:
 
@@ -110,7 +112,7 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
-## Eventos implementados no M3.2
+## Eventos implementados no M3.3
 
 ```mermaid
 flowchart TD
@@ -119,16 +121,23 @@ flowchart TD
     Relay[OutboxRelay opcional] -->|FOR UPDATE SKIP LOCKED| Outbox
     Relay -->|chave: transferId| Kafka[Kafka local]
     Relay -->|após confirmação| Published[published_at]
+    Kafka -->|TransferCompleted.v1| Consumer[TransferAuditConsumer]
+    Consumer --> Handler[AuditEventHandler]
+    Handler -->|claim por consumerName + eventId| Processed[(processed_events)]
+    Handler -->|somente no primeiro processamento| Audit[(audit_events)]
 ```
 
 O Compose comum continua com front-end, API e PostgreSQL. `compose.events.yaml` acrescenta um broker
 Kafka local em modo KRaft e habilita o relay. O relay está desabilitado por padrão e não altera o
 deploy AWS. A entrega é pelo menos uma vez: uma falha entre a confirmação do broker e o commit do
-banco pode provocar reenvio, portanto consumidores devem deduplicar por `eventId`.
+banco pode provocar reenvio. O consumidor reivindica atomicamente o par `consumerName + eventId` e
+só cria a auditoria quando esse par ainda não existe. Evento repetido é confirmado sem repetir o
+efeito.
 
 O plano incremental e a semântica de entrega estão definidos no
-[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A outbox e o relay para Kafka local já
-estão implementados; o consumidor de auditoria entra no M3.3.
+[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A outbox, o relay e o consumidor de
+auditoria já estão implementados. Retentativas limitadas, dead-letter topic e métricas do consumidor
+entram no M3.4.
 
 ## Segurança e limites
 

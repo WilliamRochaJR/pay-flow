@@ -36,6 +36,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       EVENT_RELAY_ENABLED: "true"
+      EVENT_AUDIT_ENABLED: "true"
     depends_on:
       kafka:
         condition: service_healthy

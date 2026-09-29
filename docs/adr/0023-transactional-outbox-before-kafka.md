@@ -99,6 +99,12 @@ O M3.2 adicionou um relay interno, habilitado somente por configuração, e o Co
 publicação ou o commit falhar, o evento continua elegível e pode ser reenviado. Kafka permanece fora
 do Compose comum e do runtime AWS.
 
+O M3.3 adicionou o consumidor `payflow-audit-v1` no mesmo monólito, também habilitado somente pelo
+Compose opcional. Antes de gravar a projeção em `audit_events`, ele insere o par
+`payflow-audit + eventId` em `processed_events`. A chave primária composta e o `ON CONFLICT DO
+NOTHING` tornam a reivindicação atômica: entregas repetidas não repetem o efeito. A reivindicação e a
+auditoria pertencem à mesma transação; se a segunda gravação falhar, ambas são revertidas.
+
 ## Critérios usados para aceitar este ADR
 
 - contrato `TransferCompleted.v1` explícito, versionado e sem dados pessoais;

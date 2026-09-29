@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M3.2**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M3.3**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -98,6 +98,19 @@ classDiagram
         +publish(event) void
     }
 
+    class TransferAuditConsumer {
+        +consume(payload) void
+    }
+
+    class AuditEventHandler {
+        +handle(payload) void
+    }
+
+    class AuditEventRepository {
+        +claim(consumerName, eventId) boolean
+        +record(event, payload) void
+    }
+
     class TransferPageResponse {
         +List~TransferResponse~ content
         +int page
@@ -145,6 +158,9 @@ classDiagram
     TransferCompletedV1 ..> Transfer : representa conclusão de
     OutboxRelay ..> OutboxEventPublisher : publica por
     OutboxRelay ..> TransferCompletedV1 : encaminha payload de
+    TransferAuditConsumer ..> AuditEventHandler : delega mensagem
+    AuditEventHandler ..> TransferCompletedV1 : valida e desserializa
+    AuditEventHandler ..> AuditEventRepository : deduplica e registra
     AuthService ..> User : cadastra e consulta
     AuthService ..> TokenService : solicita token
     TokenService ..> User : usa identidade
@@ -175,8 +191,8 @@ As dependências do `TransferService` não recebem cardinalidade porque represen
 ## Entidades persistidas
 
 `User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas
-tabelas `users`, `accounts` e `transfers`. `outbox_events` é uma tabela operacional acessada por JDBC,
-e não uma entidade de domínio JPA.
+tabelas `users`, `accounts` e `transfers`. `outbox_events`, `processed_events` e `audit_events` são
+tabelas operacionais acessadas por JDBC, e não entidades de domínio JPA.
 
 ```mermaid
 erDiagram
@@ -184,6 +200,8 @@ erDiagram
     ACCOUNTS ||--o{ TRANSFERS : "conta de origem"
     ACCOUNTS ||--o{ TRANSFERS : "conta de destino"
     TRANSFERS ||--|| OUTBOX_EVENTS : "gera ao concluir"
+    OUTBOX_EVENTS ||--|| AUDIT_EVENTS : "projeta ao consumir"
+    OUTBOX_EVENTS ||--|{ PROCESSED_EVENTS : "pode ser processado por consumidores"
 
     ACCOUNTS {
         UUID id PK
@@ -225,6 +243,23 @@ erDiagram
         TIMESTAMPTZ published_at
         TIMESTAMPTZ created_at
     }
+
+    PROCESSED_EVENTS {
+        VARCHAR consumer_name PK
+        UUID event_id PK
+        TIMESTAMPTZ processed_at
+    }
+
+    AUDIT_EVENTS {
+        UUID event_id PK
+        UUID transfer_id
+        VARCHAR event_type
+        SMALLINT event_version
+        TIMESTAMPTZ occurred_at
+        UUID correlation_id
+        JSONB payload
+        TIMESTAMPTZ created_at
+    }
 ```
 
 Uma conta pode participar de zero ou muitas transferências como origem e de zero ou muitas como destino. No Java, `Transfer` guarda apenas os identificadores das contas, em vez de carregar objetos `Account`. Isso mantém o registro financeiro simples e evita associações JPA desnecessárias.
@@ -244,6 +279,9 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 | `TransferCompletedV1`   | contrato de evento      | representar de forma versionada uma transferência concluída    |
 | `OutboxRelay`           | serviço agendado        | bloquear e publicar pequenos lotes de eventos pendentes        |
 | `OutboxEventPublisher`  | porta de infraestrutura | abstrair a publicação no broker                                |
+| `TransferAuditConsumer` | adaptador Kafka         | receber o payload e delegar seu processamento                  |
+| `AuditEventHandler`     | serviço de aplicação    | validar, deduplicar e registrar o evento atomicamente          |
+| `AuditEventRepository`  | repositório JDBC        | reivindicar o evento e persistir a projeção de auditoria       |
 | `User`                  | entidade JPA            | armazenar identidade, e-mail normalizado e hash da senha       |
 | `AuthService`           | serviço de aplicação    | coordenar cadastro, login e consulta do usuário                |
 | `TokenService`          | serviço de segurança    | emitir access token JWT com validade curta                     |
@@ -297,6 +335,7 @@ evento.
 
 O modelo acima mostra somente o que existe no código. A chave de idempotência protege a criação de
 transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
-M3.2 entrega esses registros ao Kafka local opcional. O estorno permanece planejado e deverá entrar
+M3.2 entrega esses registros ao Kafka local opcional e o consumidor do M3.3 cria a projeção de
+auditoria com deduplicação persistente. O estorno permanece planejado e deverá entrar
 no diagrama somente quando for implementado como uma nova operação, sem alterar transferências
 concluídas.
