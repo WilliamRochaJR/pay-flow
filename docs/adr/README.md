@@ -26,3 +26,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0020 — Git Flow, promoção entre ambientes e versionamento semântico](0020-git-flow-environments-and-semantic-versioning.md)
 - [ADR-0021 — Consistência de transferências concorrentes](0021-concurrent-transfer-consistency.md)
 - [ADR-0022 — Métricas internas e alarmes efêmeros](0022-metrics-and-ephemeral-alarms.md)
+- [ADR-0023 — Outbox transacional antes do Kafka](0023-transactional-outbox-before-kafka.md)

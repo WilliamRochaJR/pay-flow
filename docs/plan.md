@@ -53,21 +53,22 @@ o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o 
 
 Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 
-## M2 — confiabilidade e qualidade
+## M2 — confiabilidade e qualidade ✅
 
 - [x] adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull
       Request;
 - [x] Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
 - [x] promoção por revisão entre `development`, `homologation` e `production`;
-- refresh token ou sessão renovável, se necessário;
+- refresh token ou sessão renovável adiado: o token curto com restauração da sessão atende à PoC e
+  ainda não existe necessidade demonstrável de renovação silenciosa;
 - [x] paginação e filtros por período no histórico, com ordenação mais recente primeiro;
 - [x] concorrência segura com lock pessimista, versionamento e testes concorrentes;
 - [x] Testcontainers com PostgreSQL real nos testes de integração;
 - [x] métricas de transferência com Spring Boot Actuator e alarmes CloudWatch declarados;
-- [ ] validar os alarmes CloudWatch no próximo ciclo efêmero após atualizar a role de infraestrutura;
+- [x] alarmes CloudWatch validados em homologação e produção durante o ciclo da `v0.3.0`;
 - [x] análise estática, SonarQube e cobertura no CI;
-- evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
-  de baixo custo.
+- [x] infraestrutura como código isolada por ambiente, efêmera, protegida por OIDC e controlada por
+      TTL para manter o custo baixo.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
@@ -78,13 +79,24 @@ a infraestrutura foi destruída ao final do TTL. A verificação posterior ident
 parâmetro seguro residual, motivando a renovação das credenciais e a confirmação explícita da limpeza
 no workflow. Todos os ambientes permanecem desligados por padrão.
 
+Status: concluído com a publicação da versão `v0.3.0` em 2026-09-29. A candidata foi validada em
+`homologation`; a mesma revisão imutável foi promovida pela tag para `production`. O health check
+passou, os alarmes de falha de status e CPU permaneceram em `OK`, e o ambiente foi destruído ao final
+do TTL. Uma incompatibilidade entre o comando de remoção do parâmetro SSM e a permissão IAM foi
+detectada na primeira limpeza de homologação, corrigida antes da tag e validada com sucesso na limpeza
+de produção. O resultado de `main` foi sincronizado de volta para `develop` pelo PR #52.
+
 ## M3 — eventos sem microserviços
 
-- tabela `outbox_events` gravada na mesma transação da transferência;
-- Kafka em ambiente local e serviço compatível/gerenciado em cloud;
-- publicação de `TransferCompleted` com contrato versionado;
-- consumidor de auditoria ainda dentro do monólito, idempotente;
-- retries, dead-letter topic e rastreabilidade por correlation ID.
+Status: implementação concluída na candidata `v0.4.0`; aguarda estabilização, homologação e promoção.
+
+- [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
+- [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
+- [x] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
+- [x] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
+- [x] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
+      ID;
+- [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.
 
 Critério de promoção: o fluxo síncrono está estável e existe necessidade demonstrável de executar efeitos secundários sem aumentar a latência da transferência.
 

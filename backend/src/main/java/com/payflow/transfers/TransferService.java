@@ -26,17 +26,20 @@ public class TransferService {
     private final TransferRepository transferRepository;
     private final EntityManager entityManager;
     private final TransferMetrics metrics;
+    private final TransferEventRecorder eventRecorder;
 
     public TransferService(AccountRepository accountRepository, TransferRepository transferRepository,
-                           EntityManager entityManager, TransferMetrics metrics) {
+                           EntityManager entityManager, TransferMetrics metrics, TransferEventRecorder eventRecorder) {
         this.accountRepository = accountRepository;
         this.transferRepository = transferRepository;
         this.entityManager = entityManager;
         this.metrics = metrics;
+        this.eventRecorder = eventRecorder;
     }
 
     @Transactional
-    public TransferResponse create(CreateTransferRequest request, UUID ownerId, UUID idempotencyKey) {
+    public TransferResponse create(CreateTransferRequest request, UUID ownerId, UUID idempotencyKey,
+                                   String correlationId) {
         long startedAtNanos = System.nanoTime();
         String outcome = "failed";
         try {
@@ -79,7 +82,9 @@ public class TransferService {
 
             Transfer transfer = Transfer.completed(source.getId(), destination.getId(), amount, requestedCurrency,
                     ownerId, idempotencyKey);
-            TransferResponse response = TransferResponse.from(transferRepository.save(transfer));
+            Transfer savedTransfer = transferRepository.save(transfer);
+            eventRecorder.recordCompleted(savedTransfer, correlationId);
+            TransferResponse response = TransferResponse.from(savedTransfer);
             outcome = "completed";
             metrics.completedAfterCommit();
             return response;

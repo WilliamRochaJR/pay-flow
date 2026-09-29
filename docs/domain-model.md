@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M2**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M3.4**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -68,9 +68,47 @@ classDiagram
     }
 
     class TransferService {
-        +create(request) TransferResponse
+        +create(request, correlationId) TransferResponse
         +list(ownerId, page, size, status, from, to) TransferPageResponse
         +find(id) TransferResponse
+    }
+
+    class TransferEventRecorder {
+        <<interface>>
+        +recordCompleted(transfer, correlationId) void
+    }
+
+    class TransferCompletedV1 {
+        +UUID eventId
+        +String eventType
+        +int eventVersion
+        +Instant occurredAt
+        +UUID correlationId
+        +UUID transferId
+        +String amount
+        +String currency
+    }
+
+    class OutboxRelay {
+        +publishPending() void
+    }
+
+    class OutboxEventPublisher {
+        <<interface>>
+        +publish(event) void
+    }
+
+    class TransferAuditConsumer {
+        +consume(payload) void
+    }
+
+    class AuditEventHandler {
+        +handle(payload) void
+    }
+
+    class AuditEventRepository {
+        +claim(consumerName, eventId) boolean
+        +record(event, payload) void
     }
 
     class TransferPageResponse {
@@ -115,6 +153,14 @@ classDiagram
     TransferPageResponse "1" o-- "0..*" TransferResponse : contém
     TransferService ..> Account : debita e credita
     TransferService ..> Transfer : cria e persiste
+    TransferService ..> TransferEventRecorder : registra conclusão
+    TransferEventRecorder ..> TransferCompletedV1 : persiste contrato v1
+    TransferCompletedV1 ..> Transfer : representa conclusão de
+    OutboxRelay ..> OutboxEventPublisher : publica por
+    OutboxRelay ..> TransferCompletedV1 : encaminha payload de
+    TransferAuditConsumer ..> AuditEventHandler : delega mensagem
+    AuditEventHandler ..> TransferCompletedV1 : valida e desserializa
+    AuditEventHandler ..> AuditEventRepository : deduplica e registra
     AuthService ..> User : cadastra e consulta
     AuthService ..> TokenService : solicita token
     TokenService ..> User : usa identidade
@@ -144,13 +190,18 @@ As dependências do `TransferService` não recebem cardinalidade porque represen
 
 ## Entidades persistidas
 
-`User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas tabelas `users`, `accounts` e `transfers`.
+`User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas
+tabelas `users`, `accounts` e `transfers`. `outbox_events`, `processed_events` e `audit_events` são
+tabelas operacionais acessadas por JDBC, e não entidades de domínio JPA.
 
 ```mermaid
 erDiagram
     USERS ||--|{ ACCOUNTS : possui
     ACCOUNTS ||--o{ TRANSFERS : "conta de origem"
     ACCOUNTS ||--o{ TRANSFERS : "conta de destino"
+    TRANSFERS ||--|| OUTBOX_EVENTS : "gera ao concluir"
+    OUTBOX_EVENTS ||--|| AUDIT_EVENTS : "projeta ao consumir"
+    OUTBOX_EVENTS ||--|{ PROCESSED_EVENTS : "pode ser processado por consumidores"
 
     ACCOUNTS {
         UUID id PK
@@ -178,24 +229,65 @@ erDiagram
         VARCHAR status
         TIMESTAMPTZ created_at
     }
+
+    OUTBOX_EVENTS {
+        UUID event_id PK
+        VARCHAR aggregate_type
+        UUID aggregate_id
+        VARCHAR event_type
+        SMALLINT event_version
+        TIMESTAMPTZ occurred_at
+        UUID correlation_id
+        JSONB payload
+        INTEGER attempts
+        TIMESTAMPTZ last_attempt_at
+        VARCHAR last_error
+        TIMESTAMPTZ exhausted_at
+        TIMESTAMPTZ published_at
+        TIMESTAMPTZ created_at
+    }
+
+    PROCESSED_EVENTS {
+        VARCHAR consumer_name PK
+        UUID event_id PK
+        TIMESTAMPTZ processed_at
+    }
+
+    AUDIT_EVENTS {
+        UUID event_id PK
+        UUID transfer_id
+        VARCHAR event_type
+        SMALLINT event_version
+        TIMESTAMPTZ occurred_at
+        UUID correlation_id
+        JSONB payload
+        TIMESTAMPTZ created_at
+    }
 ```
 
 Uma conta pode participar de zero ou muitas transferências como origem e de zero ou muitas como destino. No Java, `Transfer` guarda apenas os identificadores das contas, em vez de carregar objetos `Account`. Isso mantém o registro financeiro simples e evita associações JPA desnecessárias.
 
 ## Responsabilidade das classes
 
-| Classe                  | Tipo                 | Responsabilidade                                               |
-| ----------------------- | -------------------- | -------------------------------------------------------------- |
-| `Account`               | entidade JPA         | manter saldo e aplicar as regras de débito e crédito           |
-| `Transfer`              | entidade JPA         | representar o registro imutável de uma transferência concluída |
-| `TransferStatus`        | enum                 | limitar os estados válidos da transferência                    |
-| `CreateTransferRequest` | DTO de entrada       | receber e validar os dados enviados pelo cliente               |
-| `AccountResponse`       | DTO de saída         | expor uma conta sem devolver diretamente a entidade JPA        |
-| `TransferResponse`      | DTO de saída         | expor uma transferência no contrato HTTP                       |
-| `TransferService`       | serviço de aplicação | coordenar validações, débito, crédito e persistência atômica   |
-| `User`                  | entidade JPA         | armazenar identidade, e-mail normalizado e hash da senha       |
-| `AuthService`           | serviço de aplicação | coordenar cadastro, login e consulta do usuário                |
-| `TokenService`          | serviço de segurança | emitir access token JWT com validade curta                     |
+| Classe                  | Tipo                    | Responsabilidade                                               |
+| ----------------------- | ----------------------- | -------------------------------------------------------------- |
+| `Account`               | entidade JPA            | manter saldo e aplicar as regras de débito e crédito           |
+| `Transfer`              | entidade JPA            | representar o registro imutável de uma transferência concluída |
+| `TransferStatus`        | enum                    | limitar os estados válidos da transferência                    |
+| `CreateTransferRequest` | DTO de entrada          | receber e validar os dados enviados pelo cliente               |
+| `AccountResponse`       | DTO de saída            | expor uma conta sem devolver diretamente a entidade JPA        |
+| `TransferResponse`      | DTO de saída            | expor uma transferência no contrato HTTP                       |
+| `TransferService`       | serviço de aplicação    | coordenar validações, débito, crédito e persistência atômica   |
+| `TransferEventRecorder` | porta de aplicação      | registrar a conclusão sem acoplar o caso de uso ao JDBC        |
+| `TransferCompletedV1`   | contrato de evento      | representar de forma versionada uma transferência concluída    |
+| `OutboxRelay`           | serviço agendado        | bloquear e publicar pequenos lotes de eventos pendentes        |
+| `OutboxEventPublisher`  | porta de infraestrutura | abstrair a publicação no broker                                |
+| `TransferAuditConsumer` | adaptador Kafka         | receber o payload e delegar seu processamento                  |
+| `AuditEventHandler`     | serviço de aplicação    | validar, deduplicar e registrar o evento atomicamente          |
+| `AuditEventRepository`  | repositório JDBC        | reivindicar o evento e persistir a projeção de auditoria       |
+| `User`                  | entidade JPA            | armazenar identidade, e-mail normalizado e hash da senha       |
+| `AuthService`           | serviço de aplicação    | coordenar cadastro, login e consulta do usuário                |
+| `TokenService`          | serviço de segurança    | emitir access token JWT com validade curta                     |
 
 DTO significa **Data Transfer Object**: objeto usado para transportar dados entre a API e seus consumidores. Separar DTOs das entidades impede que mudanças internas do banco alterem acidentalmente o contrato HTTP.
 
@@ -210,6 +302,7 @@ sequenceDiagram
     participant Source as Account origem
     participant Destination as Account destino
     participant Transfers as TransferRepository
+    participant Outbox as outbox_events
 
     Client->>Controller: POST /api/v1/transfers
     Controller->>Service: create(CreateTransferRequest)
@@ -219,11 +312,16 @@ sequenceDiagram
     Service->>Destination: credit(amount)
     Service->>Transfers: save(Transfer.completed(...))
     Transfers-->>Service: Transfer persistida
+    Service->>Outbox: INSERT TransferCompleted.v1
+    Note over Service,Outbox: mesma transação PostgreSQL
     Service-->>Controller: TransferResponse
     Controller-->>Client: 201 Created
 ```
 
-O método do serviço é transacional: débito, crédito e criação da transferência formam uma única operação. Se uma regra falhar, como saldo insuficiente, nenhuma parte deve permanecer gravada.
+O método do serviço é transacional: débito, crédito, criação da transferência e registro da outbox
+formam uma única operação. Se uma regra falhar, como saldo insuficiente, nenhuma parte deve permanecer
+gravada. Repetir a mesma chave de idempotência retorna a transferência já existente e não duplica o
+evento.
 
 ## Regras representadas no modelo
 
@@ -238,6 +336,9 @@ O método do serviço é transacional: débito, crédito e criação da transfer
 
 ## Evolução planejada
 
-O modelo acima mostra somente o que existe no código. A chave de idempotência já protege a criação de
-transferências. O estorno permanece planejado e deverá entrar no diagrama somente quando for
-implementado como uma nova operação, sem alterar transferências concluídas.
+O modelo acima mostra somente o que existe no código. A chave de idempotência protege a criação de
+transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
+M3.2 entrega esses registros ao Kafka local opcional e o consumidor do M3.3 cria a projeção de
+auditoria com deduplicação persistente. O estorno permanece planejado e deverá entrar
+no diagrama somente quando for implementado como uma nova operação, sem alterar transferências
+concluídas.

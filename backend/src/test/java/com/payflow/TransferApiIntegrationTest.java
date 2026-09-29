@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -51,6 +52,9 @@ class TransferApiIntegrationTest {
     @Autowired
     MockMvc mvc;
 
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
     @Test
     void completesTransferAndUpdatesBalances() throws Exception {
         String token = registerAndLogin("transfer@example.com", "Transfer User");
@@ -86,6 +90,78 @@ class TransferApiIntegrationTest {
                         .content(transferJson(accountIds.get(0), accountIds.get(1), "999999.00")))
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.detail").value("Saldo insuficiente para realizar a transferência."));
+    }
+
+    @Test
+    void recordsOneVersionedOutboxEventForACompletedTransfer() throws Exception {
+        String token = registerAndLogin("outbox@example.com", "Outbox User");
+        java.util.List<String> accounts = accountIds(token);
+        UUID idempotencyKey = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
+        String request = transferJson(accounts.get(0), accounts.get(1), "25.00");
+
+        String response = mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .header("X-Correlation-ID", correlationId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        UUID transferId = UUID.fromString(JsonPath.read(response, "$.id"));
+
+        String payload = jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM outbox_events WHERE aggregate_id = ?",
+                String.class,
+                transferId
+        );
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(payload, "$.eventType"))
+                .isEqualTo("TransferCompleted");
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<Integer>read(payload, "$.eventVersion"))
+                .isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(payload, "$.correlationId"))
+                .isEqualTo(correlationId.toString());
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(payload, "$.transferId"))
+                .isEqualTo(transferId.toString());
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(payload, "$.amount"))
+                .isEqualTo("25.00");
+
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .header("X-Correlation-ID", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated());
+
+        Integer eventCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
+                Integer.class,
+                transferId
+        );
+        org.assertj.core.api.Assertions.assertThat(eventCount).isEqualTo(1);
+    }
+
+    @Test
+    void doesNotRecordOutboxEventWhenTransferIsRejected() throws Exception {
+        String token = registerAndLogin("outbox-rejected@example.com", "Rejected Outbox User");
+        java.util.List<String> accounts = accountIds(token);
+        UUID correlationId = UUID.randomUUID();
+
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .header("X-Correlation-ID", correlationId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(accounts.get(0), accounts.get(1), "999999.00")))
+                .andExpect(status().isUnprocessableContent());
+
+        Integer eventCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM outbox_events WHERE correlation_id = ?",
+                Integer.class,
+                correlationId
+        );
+        org.assertj.core.api.Assertions.assertThat(eventCount).isZero();
     }
 
     @Test

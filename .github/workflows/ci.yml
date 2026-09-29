@@ -86,6 +86,9 @@ jobs:
           -f compose.prod.yaml
           config --quiet
 
+      - name: Validate optional local events configuration
+        run: docker compose -f compose.yaml -f compose.events.yaml config --quiet
+
       - name: Validate Caddy configuration
         run: >-
           docker run --rm

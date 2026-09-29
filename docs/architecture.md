@@ -50,6 +50,7 @@ O estado atual e a ordem segura de implementação estão em [Ambientes e promo�
 auth          cadastro, login e tokens
 accounts      propriedade e consulta de saldo
 transfers     regras e execução atômica
+events        contrato, outbox, relay e auditoria opcional por Kafka local
 shared        erros e infraestrutura transversal mínima
 ```
 
@@ -76,6 +77,9 @@ O front-end é organizado por domínio e caso de uso. Cada caso pode conter mode
 - `users`: identidade e credenciais.
 - `accounts`: proprietário, moeda e saldo atual.
 - `transfers`: origem, destino, valor, status, chave de idempotência e timestamps.
+- `outbox_events`: eventos de domínio gravados atomicamente e ainda não publicados.
+- `processed_events`: eventos reivindicados por consumidor para impedir efeitos duplicados.
+- `audit_events`: projeção consultável dos eventos de transferência consumidos.
 
 Restrições essenciais:
 
@@ -107,6 +111,42 @@ React -> Transaction API -> PostgreSQL
 ```
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
+
+## Eventos implementados no M3.4
+
+```mermaid
+flowchart TD
+    API[TransferService] -->|mesma transação| Transfer[(transfers)]
+    API -->|mesma transação| Outbox[(outbox_events)]
+    Relay[OutboxRelay opcional] -->|FOR UPDATE SKIP LOCKED| Outbox
+    Relay -->|chave: transferId| Kafka[Kafka local]
+    Relay -->|após confirmação| Published[published_at]
+    Kafka -->|TransferCompleted.v1| Consumer[TransferAuditConsumer]
+    Consumer --> Handler[AuditEventHandler]
+    Handler -->|claim por consumerName + eventId| Processed[(processed_events)]
+    Handler -->|somente no primeiro processamento| Audit[(audit_events)]
+    Consumer -->|falha: 2 retries| Consumer
+    Consumer -->|limite excedido| DLT[Kafka .DLT]
+    Retention[Limpeza agendada] -->|publicados há mais de 7 dias| Outbox
+```
+
+O Compose comum continua com front-end, API e PostgreSQL. `compose.events.yaml` acrescenta um broker
+Kafka local em modo KRaft e habilita o relay. O relay está desabilitado por padrão e não altera o
+deploy AWS. A entrega é pelo menos uma vez: uma falha entre a confirmação do broker e o commit do
+banco pode provocar reenvio. O consumidor reivindica atomicamente o par `consumerName + eventId` e
+só cria a auditoria quando esse par ainda não existe. Evento repetido é confirmado sem repetir o
+efeito.
+
+O relay persiste cada tentativa e para automaticamente após cinco falhas, preservando o registro
+esgotado para diagnóstico. O consumidor faz duas retentativas além da entrega inicial; persistindo a
+falha, o payload original segue para o tópico DLT com os headers de diagnóstico do Kafka. Eventos
+publicados e mensagens dos tópicos possuem retenção padrão de sete dias. Logs do relay e do handler
+reutilizam o `correlationId` criado na requisição original.
+
+O plano incremental e a semântica de entrega estão definidos no
+[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A outbox, o relay e o consumidor de
+auditoria, retentativas, DLT, retenção, métricas e rastreabilidade já estão implementados localmente.
+Kafka continua opcional e não foi adicionado à AWS.
 
 ## Segurança e limites
 

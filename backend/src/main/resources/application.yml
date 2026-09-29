@@ -15,6 +15,21 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
   mvc:
     log-request-details: false
 debug: false
@@ -50,3 +65,21 @@ app:
     issuer: ${JWT_ISSUER:payflow-api}
     secret: ${JWT_SECRET}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+  events:
+    relay:
+      enabled: ${EVENT_RELAY_ENABLED:false}
+      topic: ${EVENT_RELAY_TOPIC:payflow.transfer-completed.v1}
+      batch-size: ${EVENT_RELAY_BATCH_SIZE:20}
+      fixed-delay: ${EVENT_RELAY_FIXED_DELAY:1000}
+      send-timeout: ${EVENT_RELAY_SEND_TIMEOUT:5s}
+      max-attempts: ${EVENT_RELAY_MAX_ATTEMPTS:5}
+      retention: ${EVENT_RELAY_RETENTION:7d}
+      cleanup-delay: ${EVENT_RELAY_CLEANUP_DELAY:1h}
+    audit:
+      enabled: ${EVENT_AUDIT_ENABLED:false}
+      consumer-name: ${EVENT_AUDIT_CONSUMER_NAME:payflow-audit}
+      consumer-group: ${EVENT_AUDIT_CONSUMER_GROUP:payflow-audit-v1}
+      dead-letter-topic: ${EVENT_AUDIT_DLT:payflow.transfer-completed.v1.DLT}
+      retry-interval: ${EVENT_AUDIT_RETRY_INTERVAL:1s}
+      retry-attempts: ${EVENT_AUDIT_RETRY_ATTEMPTS:2}
+      retention: ${EVENT_AUDIT_RETENTION:7d}

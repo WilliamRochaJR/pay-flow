@@ -28,6 +28,58 @@ Acesse <http://localhost:5173>. A API fica em <http://localhost:8080/api/v1>, a 
 
 Para encerrar, execute `docker compose down`. Os dados permanecem no volume `payflow-data`. Para também apagar os dados fictícios e recriar o seed, execute `docker compose down -v`.
 
+### Executar com Kafka local opcional
+
+O fluxo comum não precisa de Kafka. Para estudar a publicação assíncrona da outbox no M3, combine o
+Compose base com o arquivo opcional:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml up --build --wait
+```
+
+Nesse modo, a API publica `TransferCompleted.v1` no tópico
+`payflow.transfer-completed.v1` e o módulo de auditoria consome cada evento uma única vez do ponto de
+vista do efeito persistido. Para visualizar os eventos:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml exec kafka \
+  /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic payflow.transfer-completed.v1 \
+  --from-beginning
+```
+
+Mensagens que continuam falhando após duas retentativas são preservadas no tópico de dead letter:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml exec kafka \
+  /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic payflow.transfer-completed.v1.DLT \
+  --from-beginning
+```
+
+O relay tenta publicar cada outbox no máximo cinco vezes. Registros esgotados permanecem no banco
+com `last_error` e `exhausted_at`; outboxes publicadas e mensagens Kafka são retidas por sete dias.
+
+Para conferir as projeções de auditoria e os eventos já processados:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml exec db \
+  psql -U payflow -d payflow -c \
+  'SELECT event_id, transfer_id, event_type, occurred_at FROM audit_events;'
+
+docker compose -f compose.yaml -f compose.events.yaml exec db \
+  psql -U payflow -d payflow -c \
+  'SELECT consumer_name, event_id, processed_at FROM processed_events;'
+```
+
+Encerre esse ambiente usando os mesmos dois arquivos:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml down
+```
+
 ### Desenvolvimento
 
 Suba somente o PostgreSQL:
@@ -81,9 +133,10 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 
 ## Estado
 
-M0 e M1 concluídos. A versão [`v0.1.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.1.0)
-formaliza o primeiro release público. O trabalho atual está no M2, começando pela promoção controlada
-entre ambientes sem manter infraestrutura AWS ligada permanentemente.
+M0, M1, M2 e M3 estão concluídos. A versão
+[`v0.3.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0) formaliza a base confiável
+publicada. A candidata `v0.4.0` acrescenta eventos no monólito, com outbox transacional, Kafka local,
+auditoria deduplicada e tratamento operacional de falhas, sem manter nova infraestrutura AWS ligada.
 
 ## Licença
 
