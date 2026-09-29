@@ -88,11 +88,13 @@ de produção. O resultado de `main` foi sincronizado de volta para `develop` pe
 
 ## M3 — eventos sem microserviços
 
-- tabela `outbox_events` gravada na mesma transação da transferência;
-- Kafka em ambiente local e serviço compatível/gerenciado em cloud;
-- publicação de `TransferCompleted` com contrato versionado;
-- consumidor de auditoria ainda dentro do monólito, idempotente;
-- retries, dead-letter topic e rastreabilidade por correlation ID.
+- [ ] revisar e aceitar o ADR-0023 antes de alterar o runtime;
+- [ ] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
+- [ ] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
+- [ ] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
+- [ ] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
+      ID;
+- [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.
 
 Critério de promoção: o fluxo síncrono está estável e existe necessidade demonstrável de executar efeitos secundários sem aumentar a latência da transferência.
 

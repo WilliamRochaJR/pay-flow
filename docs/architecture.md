@@ -108,6 +108,10 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
+O plano incremental e a semântica de entrega estão propostos no
+[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A primeira etapa adiciona somente a outbox
+ao PostgreSQL; broker e consumidor entram em incrementos posteriores.
+
 ## Segurança e limites
 
 - O sistema representa dinheiro fictício e não processa pagamentos reais.
