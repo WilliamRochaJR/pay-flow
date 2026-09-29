@@ -53,21 +53,22 @@ o ambiente é destruído depois do TTL. HTTPS passa a ser obrigatório quando o 
 
 Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 
-## M2 — confiabilidade e qualidade
+## M2 — confiabilidade e qualidade ✅
 
 - [x] adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull
       Request;
 - [x] Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
 - [x] promoção por revisão entre `development`, `homologation` e `production`;
-- refresh token ou sessão renovável, se necessário;
+- refresh token ou sessão renovável adiado: o token curto com restauração da sessão atende à PoC e
+  ainda não existe necessidade demonstrável de renovação silenciosa;
 - [x] paginação e filtros por período no histórico, com ordenação mais recente primeiro;
 - [x] concorrência segura com lock pessimista, versionamento e testes concorrentes;
 - [x] Testcontainers com PostgreSQL real nos testes de integração;
 - [x] métricas de transferência com Spring Boot Actuator e alarmes CloudWatch declarados;
-- [ ] validar os alarmes CloudWatch no próximo ciclo efêmero após atualizar a role de infraestrutura;
+- [x] alarmes CloudWatch validados em homologação e produção durante o ciclo da `v0.3.0`;
 - [x] análise estática, SonarQube e cobertura no CI;
-- evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
-  de baixo custo.
+- [x] infraestrutura como código isolada por ambiente, efêmera, protegida por OIDC e controlada por
+      TTL para manter o custo baixo.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
@@ -77,6 +78,13 @@ Estado da promoção: `development` foi publicado e destruído com sucesso em 20
 a infraestrutura foi destruída ao final do TTL. A verificação posterior identificou e removeu um
 parâmetro seguro residual, motivando a renovação das credenciais e a confirmação explícita da limpeza
 no workflow. Todos os ambientes permanecem desligados por padrão.
+
+Status: concluído com a publicação da versão `v0.3.0` em 2026-09-29. A candidata foi validada em
+`homologation`; a mesma revisão imutável foi promovida pela tag para `production`. O health check
+passou, os alarmes de falha de status e CPU permaneceram em `OK`, e o ambiente foi destruído ao final
+do TTL. Uma incompatibilidade entre o comando de remoção do parâmetro SSM e a permissão IAM foi
+detectada na primeira limpeza de homologação, corrigida antes da tag e validada com sucesso na limpeza
+de produção. O resultado de `main` foi sincronizado de volta para `develop` pelo PR #52.
 
 ## M3 — eventos sem microserviços
 

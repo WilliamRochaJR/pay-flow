@@ -121,4 +121,6 @@ identidades OIDC, configuração e workflows isolados. O ciclo de desenvolviment
 destruído; a candidata `release/0.2.0` foi aceita em homologação e ficou sujeita ao mesmo TTL e à
 limpeza automática. Em 2026-09-28, a tag anotada `v0.2.0` promoveu a revisão aceita para `production`,
 o ambiente passou pelo health check e foi destruído ao final do TTL. O merge de `main` foi sincronizado
-de volta para `develop`, concluindo o primeiro ciclo integral do Git Flow adotado.
+de volta para `develop`, concluindo o primeiro ciclo integral do Git Flow adotado. Em 2026-09-29, a
+versão `v0.3.0` repetiu o fluxo completo, incluindo estabilização em homologação, promoção da tag para
+produção, limpeza validada e sincronização pelo PR #52.
