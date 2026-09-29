@@ -5,10 +5,14 @@ import com.payflow.accounts.AccountRepository;
 import com.payflow.shared.BusinessException;
 import com.payflow.shared.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -95,8 +99,49 @@ public class TransferService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransferResponse> list(UUID ownerId) {
-        return transferRepository.findVisibleTo(ownerId).stream().map(TransferResponse::from).toList();
+    public TransferPageResponse list(UUID ownerId, int page, int size, TransferStatus status,
+                                     Instant fromInstant, Instant toInstant) {
+        if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
+            throw new BusinessException("invalid-period", "A data inicial não pode ser posterior à data final.");
+        }
+        var pageable = org.springframework.data.domain.PageRequest.of(
+                page,
+                size,
+                org.springframework.data.domain.Sort.by("createdAt").descending()
+        );
+        var transfers = transferRepository.findAll(visibleTo(ownerId, status, fromInstant, toInstant), pageable);
+        return TransferPageResponse.from(transfers);
+    }
+
+    private Specification<Transfer> visibleTo(UUID ownerId, TransferStatus status,
+                                               Instant fromInstant, Instant toInstant) {
+        return (root, query, criteria) -> {
+            var sourceAccounts = query.subquery(UUID.class);
+            var sourceAccount = sourceAccounts.from(Account.class);
+            sourceAccounts.select(sourceAccount.get("id"))
+                    .where(criteria.equal(sourceAccount.get("ownerId"), ownerId));
+
+            var destinationAccounts = query.subquery(UUID.class);
+            var destinationAccount = destinationAccounts.from(Account.class);
+            destinationAccounts.select(destinationAccount.get("id"))
+                    .where(criteria.equal(destinationAccount.get("ownerId"), ownerId));
+
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteria.or(
+                    root.get("sourceAccountId").in(sourceAccounts),
+                    root.get("destinationAccountId").in(destinationAccounts)
+            ));
+            if (status != null) {
+                predicates.add(criteria.equal(root.get("status"), status));
+            }
+            if (fromInstant != null) {
+                predicates.add(criteria.greaterThanOrEqualTo(root.get("createdAt"), fromInstant));
+            }
+            if (toInstant != null) {
+                predicates.add(criteria.lessThanOrEqualTo(root.get("createdAt"), toInstant));
+            }
+            return criteria.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     @Transactional(readOnly = true)

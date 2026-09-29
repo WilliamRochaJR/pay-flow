@@ -8,6 +8,18 @@ const accounts = [
   { id: 'account-2', holderName: 'Bruno Costa', balance: 1800, currency: 'BRL' },
 ]
 
+function transferPage(content: object[] = []) {
+  return {
+    content,
+    page: 0,
+    size: 5,
+    totalElements: content.length,
+    totalPages: content.length ? 1 : 0,
+    first: true,
+    last: true,
+  }
+}
+
 async function login() {
   await userEvent.type(screen.getByLabelText('E-mail'), 'user@example.com')
   await userEvent.type(screen.getByLabelText('Senha'), 'safe-password')
@@ -29,7 +41,7 @@ describe('PayFlow dashboard', () => {
       const url = String(input)
       expect(options?.headers).toMatchObject({ Authorization: 'Bearer persisted-token' })
       if (url.endsWith('/accounts')) return Response.json(accounts)
-      if (url.endsWith('/transfers')) return Response.json([])
+      if (url.includes('/transfers?')) return Response.json(transferPage())
       return Response.json({}, { status: 404 })
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -114,7 +126,7 @@ describe('PayFlow dashboard', () => {
           ]
           return Response.json(transfers[0], { status: 201 })
         }
-        if (url.endsWith('/transfers')) return Response.json(transfers)
+        if (url.includes('/transfers?')) return Response.json(transferPage(transfers))
         return Response.json({}, { status: 404 })
       }),
     )
@@ -138,7 +150,7 @@ describe('PayFlow dashboard', () => {
           return Response.json({ accessToken: 'test-token', tokenType: 'Bearer', expiresIn: 900 })
         }
         if (url.endsWith('/accounts')) return Response.json(accounts)
-        if (url.endsWith('/transfers')) return Response.json([])
+        if (url.includes('/transfers?')) return Response.json(transferPage())
         return Response.json({}, { status: 404 })
       }),
     )

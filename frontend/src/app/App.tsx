@@ -16,7 +16,11 @@ import { createTransfer } from '../features/transfers/create-transfer/createTran
 import { createTransferIdempotencyKey } from '../features/transfers/create-transfer/createTransferIdempotencyKey'
 import type { CreateTransferInput } from '../features/transfers/create-transfer/createTransfer.model'
 import { TransferHistory } from '../features/transfers/list-transfers/components/TransferHistory'
-import type { Transfer } from '../features/transfers/list-transfers/listTransfers.model'
+import {
+  emptyTransferPage,
+  type TransferFilters,
+  type TransferPage,
+} from '../features/transfers/list-transfers/listTransfers.model'
 import { listTransfers } from '../features/transfers/list-transfers/listTransfers.service'
 import { formatCurrency } from '../shared/formatters/currency'
 import { ApiError } from '../shared/api/httpClient'
@@ -28,7 +32,9 @@ function AppRoutes() {
   const [accessToken, setAccessToken] = useState(readAccessToken)
   const [authEmail, setAuthEmail] = useState('')
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [transfers, setTransfers] = useState<TransferPage>(emptyTransferPage)
+  const [transferPage, setTransferPage] = useState(0)
+  const [transferFilters, setTransferFilters] = useState<TransferFilters>({})
   const [sourceId, setSourceId] = useState('')
   const [destinationId, setDestinationId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,13 +47,13 @@ function AppRoutes() {
     if (!accessToken) return
     const [accountData, transferData] = await Promise.all([
       listAccounts(accessToken),
-      listTransfers(accessToken),
+      listTransfers(accessToken, transferPage, transfers.size, transferFilters),
     ])
     setAccounts(accountData)
     setTransfers(transferData)
     setSourceId((current) => current || accountData[0]?.id || '')
     setDestinationId((current) => current || accountData[1]?.id || '')
-  }, [accessToken])
+  }, [accessToken, transferFilters, transferPage, transfers.size])
 
   useEffect(() => {
     if (!accessToken) return
@@ -101,7 +107,9 @@ function AppRoutes() {
     clearAccessToken()
     setAccessToken('')
     setAccounts([])
-    setTransfers([])
+    setTransfers(emptyTransferPage)
+    setTransferPage(0)
+    setTransferFilters({})
     setSuccess('')
     setError('')
     navigate('/login', { replace: true })
@@ -119,7 +127,8 @@ function AppRoutes() {
       await createTransfer(input, pendingTransfer.current.key, accessToken)
       pendingTransfer.current = null
       setSuccess('Transferência concluída com sucesso.')
-      await loadDashboard()
+      if (transferPage === 0) await loadDashboard()
+      else setTransferPage(0)
       return true
     } catch (cause) {
       setError(
@@ -191,7 +200,16 @@ function AppRoutes() {
             onDestinationChange={setDestinationId}
             onSubmit={submitTransfer}
           />
-          <TransferHistory accounts={accounts} transfers={transfers} />
+          <TransferHistory
+            accounts={accounts}
+            transfers={transfers}
+            filters={transferFilters}
+            onFilter={(filters) => {
+              setTransferFilters(filters)
+              setTransferPage(0)
+            }}
+            onPageChange={setTransferPage}
+          />
         </section>
       </main>
 

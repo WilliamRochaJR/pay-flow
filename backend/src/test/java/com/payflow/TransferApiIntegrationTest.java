@@ -164,6 +164,60 @@ class TransferApiIntegrationTest {
     }
 
     @Test
+    void paginatesTransferHistoryFromNewestToOldest() throws Exception {
+        String token = registerAndLogin("pagination@example.com", "Pagination User");
+        java.util.List<String> accounts = accountIds(token);
+        for (int index = 1; index <= 6; index++) {
+            mvc.perform(post("/api/v1/transfers")
+                            .header("Authorization", "Bearer " + token)
+                            .header("Idempotency-Key", UUID.randomUUID())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(transferJson(accounts.get(0), accounts.get(1), index + ".00")))
+                    .andExpect(status().isCreated());
+        }
+
+        mvc.perform(get("/api/v1/transfers?page=0&size=5")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(5)))
+                .andExpect(jsonPath("$.content[0].amount").value(6.00))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(5))
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(false));
+
+        mvc.perform(get("/api/v1/transfers?page=1&size=5")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].amount").value(1.00))
+                .andExpect(jsonPath("$.last").value(true));
+
+        mvc.perform(get("/api/v1/transfers")
+                        .queryParam("status", "COMPLETED")
+                        .queryParam("from", "2020-01-01T00:00:00Z")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(5)))
+                .andExpect(jsonPath("$.totalElements").value(6));
+    }
+
+    @Test
+    void rejectsInvalidTransferHistoryPeriod() throws Exception {
+        String token = registerAndLogin("period@example.com", "Period User");
+
+        mvc.perform(get("/api/v1/transfers")
+                        .queryParam("from", "2026-09-30T00:00:00Z")
+                        .queryParam("to", "2026-09-01T23:59:59Z")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail")
+                        .value("A data inicial não pode ser posterior à data final."));
+    }
+
+    @Test
     void generatesAndPropagatesCorrelationId() throws Exception {
         String suppliedCorrelationId = UUID.randomUUID().toString();
 
