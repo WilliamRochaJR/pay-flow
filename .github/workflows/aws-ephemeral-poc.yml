@@ -299,7 +299,7 @@ jobs:
 
       - name: Remove encrypted runtime configuration
         if: ${{ always() && steps.runtime_cleanup_credentials.outcome == 'success' }}
-        run: aws ssm delete-parameters --names "$RUNTIME_PARAMETER"
+        run: aws ssm delete-parameter --name "$RUNTIME_PARAMETER"
 
       - name: Configure AWS credentials for cleanup
         if: ${{ always() }}
