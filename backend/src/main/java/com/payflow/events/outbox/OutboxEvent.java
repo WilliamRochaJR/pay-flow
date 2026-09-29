@@ -2,5 +2,5 @@ package com.payflow.events.outbox;
 
 import java.util.UUID;
 
-record OutboxEvent(UUID eventId, UUID aggregateId, String payload) {
+record OutboxEvent(UUID eventId, UUID aggregateId, UUID correlationId, String payload, int attempts) {
 }

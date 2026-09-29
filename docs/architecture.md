@@ -112,7 +112,7 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
-## Eventos implementados no M3.3
+## Eventos implementados no M3.4
 
 ```mermaid
 flowchart TD
@@ -125,6 +125,9 @@ flowchart TD
     Consumer --> Handler[AuditEventHandler]
     Handler -->|claim por consumerName + eventId| Processed[(processed_events)]
     Handler -->|somente no primeiro processamento| Audit[(audit_events)]
+    Consumer -->|falha: 2 retries| Consumer
+    Consumer -->|limite excedido| DLT[Kafka .DLT]
+    Retention[Limpeza agendada] -->|publicados há mais de 7 dias| Outbox
 ```
 
 O Compose comum continua com front-end, API e PostgreSQL. `compose.events.yaml` acrescenta um broker
@@ -134,10 +137,16 @@ banco pode provocar reenvio. O consumidor reivindica atomicamente o par `consume
 só cria a auditoria quando esse par ainda não existe. Evento repetido é confirmado sem repetir o
 efeito.
 
+O relay persiste cada tentativa e para automaticamente após cinco falhas, preservando o registro
+esgotado para diagnóstico. O consumidor faz duas retentativas além da entrega inicial; persistindo a
+falha, o payload original segue para o tópico DLT com os headers de diagnóstico do Kafka. Eventos
+publicados e mensagens dos tópicos possuem retenção padrão de sete dias. Logs do relay e do handler
+reutilizam o `correlationId` criado na requisição original.
+
 O plano incremental e a semântica de entrega estão definidos no
 [ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A outbox, o relay e o consumidor de
-auditoria já estão implementados. Retentativas limitadas, dead-letter topic e métricas do consumidor
-entram no M3.4.
+auditoria, retentativas, DLT, retenção, métricas e rastreabilidade já estão implementados localmente.
+Kafka continua opcional e não foi adicionado à AWS.
 
 ## Segurança e limites
 

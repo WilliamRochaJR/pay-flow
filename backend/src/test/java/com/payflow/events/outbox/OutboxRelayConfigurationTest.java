@@ -10,12 +10,15 @@ class OutboxRelayConfigurationTest {
 
     @Test
     void createsTheSingleNodeTransferTopic() {
-        var properties = new OutboxRelayProperties("payflow.transfer-completed.v1", 20, Duration.ofSeconds(5));
+        var properties = new OutboxRelayProperties(
+                "payflow.transfer-completed.v1", 20, Duration.ofSeconds(5), 5,
+                Duration.ofDays(7), Duration.ofHours(1));
 
         var topic = new OutboxRelayConfiguration().transferCompletedTopic(properties);
 
         assertThat(topic.name()).isEqualTo("payflow.transfer-completed.v1");
         assertThat(topic.numPartitions()).isEqualTo(1);
         assertThat(topic.replicationFactor()).isEqualTo((short) 1);
+        assertThat(topic.configs()).containsEntry("retention.ms", "604800000");
     }
 }

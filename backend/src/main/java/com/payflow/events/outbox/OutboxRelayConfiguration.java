@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.apache.kafka.common.config.TopicConfig;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration(proxyBeanMethods = false)
@@ -16,6 +17,10 @@ class OutboxRelayConfiguration {
 
     @Bean
     NewTopic transferCompletedTopic(OutboxRelayProperties properties) {
-        return TopicBuilder.name(properties.topic()).partitions(1).replicas(1).build();
+        return TopicBuilder.name(properties.topic())
+                .partitions(1)
+                .replicas(1)
+                .config(TopicConfig.RETENTION_MS_CONFIG, Long.toString(properties.retention().toMillis()))
+                .build();
     }
 }

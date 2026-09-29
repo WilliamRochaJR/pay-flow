@@ -77,11 +77,14 @@ class KafkaOutboxEventPublisherTest {
     private KafkaOutboxEventPublisher publisher(Duration timeout) {
         return new KafkaOutboxEventPublisher(
                 kafkaTemplate,
-                new OutboxRelayProperties("events", 20, timeout)
+                new OutboxRelayProperties(
+                        "events", 20, timeout, 5, Duration.ofDays(7), Duration.ofHours(1))
         );
     }
 
     private OutboxEvent event() {
-        return new OutboxEvent(UUID.randomUUID(), UUID.randomUUID(), "{\"eventType\":\"TransferCompleted\"}");
+        return new OutboxEvent(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "{\"eventType\":\"TransferCompleted\"}", 0);
     }
 }
