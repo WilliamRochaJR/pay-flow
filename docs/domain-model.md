@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M3.1**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M3.2**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -89,6 +89,15 @@ classDiagram
         +String currency
     }
 
+    class OutboxRelay {
+        +publishPending() void
+    }
+
+    class OutboxEventPublisher {
+        <<interface>>
+        +publish(event) void
+    }
+
     class TransferPageResponse {
         +List~TransferResponse~ content
         +int page
@@ -134,6 +143,8 @@ classDiagram
     TransferService ..> TransferEventRecorder : registra conclusão
     TransferEventRecorder ..> TransferCompletedV1 : persiste contrato v1
     TransferCompletedV1 ..> Transfer : representa conclusão de
+    OutboxRelay ..> OutboxEventPublisher : publica por
+    OutboxRelay ..> TransferCompletedV1 : encaminha payload de
     AuthService ..> User : cadastra e consulta
     AuthService ..> TokenService : solicita token
     TokenService ..> User : usa identidade
@@ -220,20 +231,22 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 
 ## Responsabilidade das classes
 
-| Classe                  | Tipo                 | Responsabilidade                                               |
-| ----------------------- | -------------------- | -------------------------------------------------------------- |
-| `Account`               | entidade JPA         | manter saldo e aplicar as regras de débito e crédito           |
-| `Transfer`              | entidade JPA         | representar o registro imutável de uma transferência concluída |
-| `TransferStatus`        | enum                 | limitar os estados válidos da transferência                    |
-| `CreateTransferRequest` | DTO de entrada       | receber e validar os dados enviados pelo cliente               |
-| `AccountResponse`       | DTO de saída         | expor uma conta sem devolver diretamente a entidade JPA        |
-| `TransferResponse`      | DTO de saída         | expor uma transferência no contrato HTTP                       |
-| `TransferService`       | serviço de aplicação | coordenar validações, débito, crédito e persistência atômica   |
-| `TransferEventRecorder` | porta de aplicação   | registrar a conclusão sem acoplar o caso de uso ao JDBC        |
-| `TransferCompletedV1`   | contrato de evento   | representar de forma versionada uma transferência concluída    |
-| `User`                  | entidade JPA         | armazenar identidade, e-mail normalizado e hash da senha       |
-| `AuthService`           | serviço de aplicação | coordenar cadastro, login e consulta do usuário                |
-| `TokenService`          | serviço de segurança | emitir access token JWT com validade curta                     |
+| Classe                  | Tipo                    | Responsabilidade                                               |
+| ----------------------- | ----------------------- | -------------------------------------------------------------- |
+| `Account`               | entidade JPA            | manter saldo e aplicar as regras de débito e crédito           |
+| `Transfer`              | entidade JPA            | representar o registro imutável de uma transferência concluída |
+| `TransferStatus`        | enum                    | limitar os estados válidos da transferência                    |
+| `CreateTransferRequest` | DTO de entrada          | receber e validar os dados enviados pelo cliente               |
+| `AccountResponse`       | DTO de saída            | expor uma conta sem devolver diretamente a entidade JPA        |
+| `TransferResponse`      | DTO de saída            | expor uma transferência no contrato HTTP                       |
+| `TransferService`       | serviço de aplicação    | coordenar validações, débito, crédito e persistência atômica   |
+| `TransferEventRecorder` | porta de aplicação      | registrar a conclusão sem acoplar o caso de uso ao JDBC        |
+| `TransferCompletedV1`   | contrato de evento      | representar de forma versionada uma transferência concluída    |
+| `OutboxRelay`           | serviço agendado        | bloquear e publicar pequenos lotes de eventos pendentes        |
+| `OutboxEventPublisher`  | porta de infraestrutura | abstrair a publicação no broker                                |
+| `User`                  | entidade JPA            | armazenar identidade, e-mail normalizado e hash da senha       |
+| `AuthService`           | serviço de aplicação    | coordenar cadastro, login e consulta do usuário                |
+| `TokenService`          | serviço de segurança    | emitir access token JWT com validade curta                     |
 
 DTO significa **Data Transfer Object**: objeto usado para transportar dados entre a API e seus consumidores. Separar DTOs das entidades impede que mudanças internas do banco alterem acidentalmente o contrato HTTP.
 
@@ -283,6 +296,7 @@ evento.
 ## Evolução planejada
 
 O modelo acima mostra somente o que existe no código. A chave de idempotência protege a criação de
-transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay e o
-Kafka entram no M3.2. O estorno permanece planejado e deverá entrar no diagrama somente quando for
-implementado como uma nova operação, sem alterar transferências concluídas.
+transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
+M3.2 entrega esses registros ao Kafka local opcional. O estorno permanece planejado e deverá entrar
+no diagrama somente quando for implementado como uma nova operação, sem alterar transferências
+concluídas.
