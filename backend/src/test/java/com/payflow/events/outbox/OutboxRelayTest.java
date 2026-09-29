@@ -39,6 +39,15 @@ class OutboxRelayTest {
     }
 
     @Test
+    void doesNothingWhenThereAreNoPendingEvents() {
+        when(repository.lockPending(20)).thenReturn(List.of());
+
+        relay().publishPending();
+
+        verify(publisher, never()).publish(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void keepsAnEventPendingWhenPublishingFails() {
         OutboxEvent event = event();
         when(repository.lockPending(20)).thenReturn(List.of(event));
