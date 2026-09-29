@@ -15,6 +15,14 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
   mvc:
     log-request-details: false
 debug: false
@@ -50,3 +58,10 @@ app:
     issuer: ${JWT_ISSUER:payflow-api}
     secret: ${JWT_SECRET}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+  events:
+    relay:
+      enabled: ${EVENT_RELAY_ENABLED:false}
+      topic: ${EVENT_RELAY_TOPIC:payflow.transfer-completed.v1}
+      batch-size: ${EVENT_RELAY_BATCH_SIZE:20}
+      fixed-delay: ${EVENT_RELAY_FIXED_DELAY:1000}
+      send-timeout: ${EVENT_RELAY_SEND_TIMEOUT:5s}

@@ -50,7 +50,7 @@ O estado atual e a ordem segura de implementação estão em [Ambientes e promo�
 auth          cadastro, login e tokens
 accounts      propriedade e consulta de saldo
 transfers     regras e execução atômica
-events        contrato e persistência de eventos na outbox
+events        contrato, outbox e relay opcional para Kafka local
 shared        erros e infraestrutura transversal mínima
 ```
 
@@ -110,9 +110,25 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
+## Eventos implementados no M3.2
+
+```mermaid
+flowchart TD
+    API[TransferService] -->|mesma transação| Transfer[(transfers)]
+    API -->|mesma transação| Outbox[(outbox_events)]
+    Relay[OutboxRelay opcional] -->|FOR UPDATE SKIP LOCKED| Outbox
+    Relay -->|chave: transferId| Kafka[Kafka local]
+    Relay -->|após confirmação| Published[published_at]
+```
+
+O Compose comum continua com front-end, API e PostgreSQL. `compose.events.yaml` acrescenta um broker
+Kafka local em modo KRaft e habilita o relay. O relay está desabilitado por padrão e não altera o
+deploy AWS. A entrega é pelo menos uma vez: uma falha entre a confirmação do broker e o commit do
+banco pode provocar reenvio, portanto consumidores devem deduplicar por `eventId`.
+
 O plano incremental e a semântica de entrega estão definidos no
-[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A primeira etapa adiciona somente a outbox
-ao PostgreSQL e já está implementada; broker e consumidor entram em incrementos posteriores.
+[ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A outbox e o relay para Kafka local já
+estão implementados; o consumidor de auditoria entra no M3.3.
 
 ## Segurança e limites
 

@@ -93,6 +93,12 @@ Os campos `attempts` e `published_at` foram incluídos desde a criação da tabe
 dos próximos incrementos. A política de retenção e o destino de eventos que excederem o limite de
 tentativas serão implementados no M3.4, antes de qualquer operação contínua em cloud.
 
+O M3.2 adicionou um relay interno, habilitado somente por configuração, e o Compose opcional
+`compose.events.yaml`. O relay seleciona lotes ordenados com `FOR UPDATE SKIP LOCKED`, publica usando o
+`transferId` como chave Kafka, espera a confirmação do broker e então preenche `published_at`. Se a
+publicação ou o commit falhar, o evento continua elegível e pode ser reenviado. Kafka permanece fora
+do Compose comum e do runtime AWS.
+
 ## Critérios usados para aceitar este ADR
 
 - contrato `TransferCompleted.v1` explícito, versionado e sem dados pessoais;
