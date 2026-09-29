@@ -4,6 +4,35 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.3.0] - 2026-09-28
+
+### Adicionado
+
+- paginação e filtros por período e status no histórico de transferências;
+- testes concorrentes com PostgreSQL real para saldo e idempotência;
+- métricas de negócio para transferências concluídas, repetidas, recusadas e com falha;
+- medição da duração das tentativas de transferência com cardinalidade controlada;
+- alarmes CloudWatch efêmeros para falha de status da EC2 e CPU elevada;
+- documentação operacional de observabilidade e ADRs sobre concorrência e métricas.
+
+### Alterado
+
+- transferências concorrentes passam a ser verificadas explicitamente contra débito duplicado e saldo
+  negativo;
+- permissões da role de infraestrutura incluem o ciclo de vida dos alarmes CloudWatch;
+- lease efêmero de cada ambiente passa a usar um caminho específico no bucket de state.
+
+### Segurança
+
+- métricas do Actuator permanecem fora das rotas públicas do Caddy;
+- identificadores de usuário, conta e transferência não são usados como tags de métricas;
+- contadores de conclusão e replay são incrementados somente depois do commit da transação.
+
+### Observações
+
+- alarmes e aplicação continuam vinculados ao TTL do ambiente efêmero;
+- a primeira validação da candidata ocorre em homologação antes da promoção para produção.
+
 ## [0.2.0] - 2026-09-27
 
 ### Adicionado
@@ -65,5 +94,6 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - a demonstração pública não movimenta dinheiro real;
 - os ambientes AWS permanecem desligados por padrão e são removidos depois do TTL.
 
+[0.3.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.2.0
 [0.1.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.1.0
