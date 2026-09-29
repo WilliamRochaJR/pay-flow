@@ -49,6 +49,19 @@ docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   --from-beginning
 ```
 
+Mensagens que continuam falhando após duas retentativas são preservadas no tópico de dead letter:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml exec kafka \
+  /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic payflow.transfer-completed.v1.DLT \
+  --from-beginning
+```
+
+O relay tenta publicar cada outbox no máximo cinco vezes. Registros esgotados permanecem no banco
+com `last_error` e `exhausted_at`; outboxes publicadas e mensagens Kafka são retidas por sete dias.
+
 Para conferir as projeções de auditoria e os eventos já processados:
 
 ```bash

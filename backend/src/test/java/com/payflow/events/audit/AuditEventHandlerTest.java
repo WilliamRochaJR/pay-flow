@@ -1,5 +1,6 @@
 package com.payflow.events.audit;
 
+import com.payflow.events.EventMetrics;
 import com.payflow.events.outbox.TransferCompletedV1;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,9 @@ class AuditEventHandlerTest {
     @Mock
     ObjectMapper objectMapper;
 
+    @Mock
+    EventMetrics metrics;
+
     @Test
     void recordsAnEventClaimedForTheFirstTime() throws Exception {
         TransferCompletedV1 event = event("TransferCompleted", 1);
@@ -34,6 +38,7 @@ class AuditEventHandlerTest {
         handler().handle("payload");
 
         verify(repository).record(event, "payload");
+        verify(metrics).auditProcessed(false);
     }
 
     @Test
@@ -45,6 +50,7 @@ class AuditEventHandlerTest {
         handler().handle("payload");
 
         verify(repository, never()).record(event, "payload");
+        verify(metrics).auditProcessed(true);
     }
 
     @Test
@@ -70,7 +76,14 @@ class AuditEventHandlerTest {
     }
 
     private AuditEventHandler handler() {
-        return new AuditEventHandler(repository, objectMapper, "payflow-audit");
+        return new AuditEventHandler(
+                repository,
+                objectMapper,
+                new EventAuditProperties(
+                        "payflow-audit", "payflow-audit-v1", "events.DLT",
+                        java.time.Duration.ofSeconds(1), 2, java.time.Duration.ofDays(7)),
+                metrics
+        );
     }
 
     private TransferCompletedV1 event(String type, int version) {

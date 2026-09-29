@@ -32,6 +32,25 @@ adequado ao ambiente efêmero inicial; retenção histórica exigirá um coletor
 IDs não são usados como tags. `reason` e `outcome` possuem conjuntos pequenos e controlados para
 evitar alta cardinalidade.
 
+## Métricas de eventos
+
+Com o Compose opcional de Kafka ativo, consulte:
+
+```bash
+curl http://localhost:8080/actuator/metrics/payflow.events.relay
+curl http://localhost:8080/actuator/metrics/payflow.events.audit
+curl http://localhost:8080/actuator/metrics/payflow.events.outbox.cleaned
+```
+
+`payflow.events.relay` usa os resultados `published`, `retry` e `exhausted`.
+`payflow.events.audit` usa `processed`, `duplicate`, `retry` e `dead-lettered`. Esses valores formam
+um conjunto limitado; `eventId`, `transferId` e `correlationId` aparecem em banco ou logs, nunca em
+tags de métrica.
+
+O `correlationId` nasce na requisição HTTP, é armazenado no evento e volta ao MDC durante publicação
+e consumo. Assim, uma busca pelo mesmo valor conecta logs síncronos e assíncronos sem propagar dados
+pessoais.
+
 ## Acesso no ambiente publicado
 
 O proxy público não encaminha `/actuator/metrics`. Depois de entrar na instância por Systems Manager,

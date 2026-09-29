@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M3.3**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M3.4**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -240,6 +240,9 @@ erDiagram
         UUID correlation_id
         JSONB payload
         INTEGER attempts
+        TIMESTAMPTZ last_attempt_at
+        VARCHAR last_error
+        TIMESTAMPTZ exhausted_at
         TIMESTAMPTZ published_at
         TIMESTAMPTZ created_at
     }

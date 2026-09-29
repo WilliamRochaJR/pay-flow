@@ -92,7 +92,7 @@ de produção. O resultado de `main` foi sincronizado de volta para `develop` pe
 - [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
 - [x] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
 - [x] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
-- [ ] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
+- [x] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
       ID;
 - [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.
 
