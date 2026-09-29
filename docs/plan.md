@@ -91,7 +91,7 @@ de produção. O resultado de `main` foi sincronizado de volta para `develop` pe
 - [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
 - [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
 - [x] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
-- [ ] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
+- [x] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
 - [ ] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
       ID;
 - [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.

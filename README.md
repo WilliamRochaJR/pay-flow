@@ -38,7 +38,8 @@ docker compose -f compose.yaml -f compose.events.yaml up --build --wait
 ```
 
 Nesse modo, a API publica `TransferCompleted.v1` no tópico
-`payflow.transfer-completed.v1`. Para visualizar os eventos:
+`payflow.transfer-completed.v1` e o módulo de auditoria consome cada evento uma única vez do ponto de
+vista do efeito persistido. Para visualizar os eventos:
 
 ```bash
 docker compose -f compose.yaml -f compose.events.yaml exec kafka \
@@ -46,6 +47,18 @@ docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   --bootstrap-server localhost:9092 \
   --topic payflow.transfer-completed.v1 \
   --from-beginning
+```
+
+Para conferir as projeções de auditoria e os eventos já processados:
+
+```bash
+docker compose -f compose.yaml -f compose.events.yaml exec db \
+  psql -U payflow -d payflow -c \
+  'SELECT event_id, transfer_id, event_type, occurred_at FROM audit_events;'
+
+docker compose -f compose.yaml -f compose.events.yaml exec db \
+  psql -U payflow -d payflow -c \
+  'SELECT consumer_name, event_id, processed_at FROM processed_events;'
 ```
 
 Encerre esse ambiente usando os mesmos dois arquivos:
@@ -109,8 +122,8 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 
 M0, M1 e M2 estão concluídos. A versão
 [`v0.3.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0) formaliza a base confiável
-publicada. O trabalho atual está no M3: eventos no monólito, com outbox transacional e Kafka local
-opcional, sem manter nova infraestrutura AWS ligada.
+publicada. O trabalho atual está no M3: eventos no monólito, com outbox transacional, Kafka local e
+auditoria deduplicada opcionais, sem manter nova infraestrutura AWS ligada.
 
 ## Licença
 
