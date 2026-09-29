@@ -58,22 +58,25 @@ Status: concluído com a publicação da versão `v0.1.0` em 2026-09-23.
 - [x] adoção incremental de Git Flow com `develop`, `release/*` e `hotfix/*` protegidas por Pull
       Request;
 - [x] Semantic Versioning, tags anotadas e GitHub Releases, começando por `v0.1.0`;
-- [ ] promoção por revisão entre `development`, `homologation` e `production`;
+- [x] promoção por revisão entre `development`, `homologation` e `production`;
 - refresh token ou sessão renovável, se necessário;
-- paginação e filtros no histórico;
-- concorrência segura com lock/versionamento e testes concorrentes;
-- Testcontainers nas integrações;
-- métricas com Spring Boot Actuator e alarmes básicos;
-- análise estática e cobertura no CI;
+- [x] paginação e filtros por período no histórico, com ordenação mais recente primeiro;
+- [x] concorrência segura com lock pessimista, versionamento e testes concorrentes;
+- [x] Testcontainers com PostgreSQL real nos testes de integração;
+- [x] métricas de transferência com Spring Boot Actuator e alarmes CloudWatch declarados;
+- [ ] validar os alarmes CloudWatch no próximo ciclo efêmero após atualizar a role de infraestrutura;
+- [x] análise estática, SonarQube e cobertura no CI;
 - evolução da infraestrutura como código para recursos gerenciados e ambientes isolados, efêmeros e
   de baixo custo.
 
 Critério de promoção: falhas ou manutenção do M1 mostram que essas capacidades têm valor concreto.
 
 Estado da promoção: `development` foi publicado e destruído com sucesso em 2026-09-27. A candidata
-`release/0.2.0` também foi publicada, aprovada e destruída automaticamente em `homologation` na mesma
-data. O próximo incremento é criar a tag anotada `v0.2.0` e promover essa revisão para `production`,
-mantendo todos os ambientes AWS efêmeros e desligados por padrão.
+`release/0.2.0` também foi publicada, aprovada e destruída em `homologation` na mesma data. Em
+2026-09-28, a tag anotada `v0.2.0` promoveu a mesma revisão para `production`; o health check passou e
+a infraestrutura foi destruída ao final do TTL. A verificação posterior identificou e removeu um
+parâmetro seguro residual, motivando a renovação das credenciais e a confirmação explícita da limpeza
+no workflow. Todos os ambientes permanecem desligados por padrão.
 
 ## M3 — eventos sem microserviços
 

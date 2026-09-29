@@ -119,4 +119,6 @@ Em 2026-09-23, as etapas 1 a 4 da migração foram concluídas com a publicaçã
 sincronização de `main` para `develop`. Em 2026-09-27, `development` e `homologation` receberam state,
 identidades OIDC, configuração e workflows isolados. O ciclo de desenvolvimento foi validado e
 destruído; a candidata `release/0.2.0` foi aceita em homologação e ficou sujeita ao mesmo TTL e à
-limpeza automática.
+limpeza automática. Em 2026-09-28, a tag anotada `v0.2.0` promoveu a revisão aceita para `production`,
+o ambiente passou pelo health check e foi destruído ao final do TTL. O merge de `main` foi sincronizado
+de volta para `develop`, concluindo o primeiro ciclo integral do Git Flow adotado.

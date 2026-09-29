@@ -33,9 +33,14 @@ Construir o PayFlow incrementalmente, preservando um produto executável ao fina
 
 ## Git e commits
 
-- Nunca executar `git commit` sem antes pedir autorização explícita ao usuário.
-- Antes de pedir autorização, apresentar resumidamente quais arquivos e mudanças entrarão no commit e sugerir a mensagem.
-- A autorização vale somente para o commit apresentado; alterações ou commits posteriores exigem uma nova confirmação.
+- Mudanças solicitadas pelo usuário autorizam automaticamente criar uma branch curta, executar as
+  validações relevantes, criar commits com Conventional Commits, enviar essa branch ao GitHub e abrir
+  Pull Request para `develop`, desde que tudo permaneça dentro do escopo solicitado.
+- Informar resumidamente os commits criados, as validações executadas e o link do Pull Request, sem
+  interromper o trabalho apenas para pedir autorização dessas operações rotineiras.
+- Pedir autorização explícita antes de fazer merge, criar ou publicar tags e releases, publicar ou
+  destruir recursos na AWS, alterar regras de proteção, executar ações destrutivas ou incluir mudanças
+  materialmente fora do escopo solicitado.
 - Não adicionar `my-docs/` ao Git, nem mesmo com `git add -f`. Essa pasta é um caderno exclusivamente local.
 - Seguir o Git Flow definido no ADR-0020. Mudanças comuns nascem de `develop` em branches curtas com
   prefixos `feature/`, `fix/`, `refactor/`, `test/`, `docs/` ou `ci/` e retornam a `develop` por Pull

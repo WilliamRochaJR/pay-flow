@@ -6,11 +6,11 @@ state, lease de TTL e dados.
 
 ## Estado atual
 
-| Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado             |
-| -------------- | --------------- | ------------------ | ------------------ | ------------------ |
-| `development`  | `develop`       | configurado        | efêmera com TTL    | validado           |
-| `homologation` | `release/*`     | configurado        | efêmera com TTL    | aceite aprovado    |
-| `production`   | tag em `main`   | configurado        | efêmera com TTL    | implementado no M1 |
+| Ambiente       | Origem prevista | GitHub Environment | Infraestrutura AWS | Estado          |
+| -------------- | --------------- | ------------------ | ------------------ | --------------- |
+| `development`  | `develop`       | configurado        | efêmera com TTL    | validado        |
+| `homologation` | `release/*`     | configurado        | efêmera com TTL    | aceite aprovado |
+| `production`   | tag em `main`   | configurado        | efêmera com TTL    | v0.2.0 validada |
 
 O workflow publica `develop` em `development`, `release/X.Y.Z` em `homologation` e exige uma tag
 anotada `vX.Y.Z` para `production`. O watchdog agendado permanece em produção; os demais ambientes
@@ -128,6 +128,22 @@ lease foi removida do bucket de state.
 Depois que os dois ambientes anteriores estiverem comprovados, produção aceitará somente tags
 `vX.Y.Z` existentes e poderá exigir um revisor no GitHub Environment.
 
+Estado: concluído e validado com a versão `v0.2.0` em 2026-09-28.
+
+#### Evidência do primeiro ciclo
+
+A execução [GitHub Actions #36452339932](https://github.com/WilliamRochaJR/pay-flow/actions/runs/36452339932)
+publicou em `production` exatamente a tag anotada `v0.2.0`, apontada para o commit
+`e7957f59a3bde9c73f1441b88463ee853cc59e2f`. O health check público passou antes do início do TTL de
+60 minutos, e o `terraform destroy` removeu a infraestrutura efêmera ao final.
+
+A inspeção posterior encontrou o parâmetro seguro `/payflow/production/runtime-env` ainda presente,
+apesar de o workflow ter terminado verde. A causa foi a combinação entre uma sessão AWS temporária de
+até uma hora, um TTL de uma hora e `continue-on-error` no step de remoção. O parâmetro foi removido
+manualmente sem leitura do conteúdo. O workflow agora renova as credenciais antes da remoção, verifica
+explicitamente a ausência do parâmetro e acusa falha quando não consegue comprovar a limpeza. A
+destruição da infraestrutura continua protegida por `always()` para não ser impedida por essa falha.
+
 ### 5. Promover artefatos imutáveis
 
 Construir as imagens uma vez, identificá-las por digest e promover exatamente os mesmos artefatos.
@@ -142,5 +158,5 @@ state ou banco. Pull Requests comuns executam apenas validação e não criam re
 
 ## Critério de conclusão do primeiro incremento
 
-Os ciclos de `development` e `homologation` foram publicados e validados. O próximo incremento promove
-a revisão aceita para `production` por meio da tag anotada `v0.2.0`.
+Os ciclos de `development`, `homologation` e `production` foram publicados, validados e destruídos. A
+promoção da mesma revisão por meio da tag anotada `v0.2.0` concluiu este incremento.

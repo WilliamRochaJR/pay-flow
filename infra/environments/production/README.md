@@ -24,6 +24,7 @@ Para `homologation`, execute o workflow a partir de uma branch `release/X.Y.Z`, 
   Systems Manager;
 - Elastic IP para DNS estável;
 - bucket S3 privado, versionado, criptografado e com retenção para backups;
+- alarmes CloudWatch efêmeros para falha de status da EC2 e CPU alta;
 - role da EC2 limitada a SSM e ao bucket de backup.
 
 PostgreSQL e API não terão portas públicas. Isso será garantido pelo Compose de produção na próxima
