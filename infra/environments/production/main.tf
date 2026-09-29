@@ -238,3 +238,43 @@ resource "aws_eip" "app" {
 
   tags = { Name = "${local.name}-app" }
 }
+
+resource "aws_cloudwatch_metric_alarm" "instance_status_check" {
+  alarm_name          = "${local.name}-instance-status-check"
+  alarm_description   = "PayFlow EC2 failed an instance or system status check."
+  namespace           = "AWS/EC2"
+  metric_name         = "StatusCheckFailed"
+  statistic           = "Maximum"
+  period              = 60
+  evaluation_periods  = 2
+  datapoints_to_alarm = 2
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    InstanceId = aws_instance.app.id
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+  alarm_name          = "${local.name}-high-cpu"
+  alarm_description   = "PayFlow EC2 CPU remained above 80 percent for 15 minutes."
+  namespace           = "AWS/EC2"
+  metric_name         = "CPUUtilization"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 3
+  threshold           = 80
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    InstanceId = aws_instance.app.id
+  }
+
+  tags = local.common_tags
+}

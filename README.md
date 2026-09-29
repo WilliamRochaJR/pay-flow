@@ -74,6 +74,7 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 - [Histórico de versões](CHANGELOG.md)
 - [Processo de release](docs/releases/README.md)
 - [Ambientes e promoção](docs/environments.md)
+- [Observabilidade](docs/observability.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 - [Infraestrutura AWS com Terraform](infra/README.md)
 - [Runtime de produção com Compose e Caddy](deploy/README.md)

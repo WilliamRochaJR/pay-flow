@@ -191,6 +191,19 @@ data "aws_iam_policy_document" "github_infrastructure" {
   }
 
   statement {
+    sid = "ManageEphemeralCloudWatchAlarms"
+    actions = [
+      "cloudwatch:DeleteAlarms",
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:ListTagsForResource",
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:TagResource",
+      "cloudwatch:UntagResource"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid = "ManagePayFlowInstanceIdentity"
     actions = [
       "iam:AddRoleToInstanceProfile",

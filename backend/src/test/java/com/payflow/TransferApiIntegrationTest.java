@@ -16,6 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -85,6 +86,41 @@ class TransferApiIntegrationTest {
                         .content(transferJson(accountIds.get(0), accountIds.get(1), "999999.00")))
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.detail").value("Saldo insuficiente para realizar a transferência."));
+    }
+
+    @Test
+    void exposesBoundedTransferMetricsThroughActuator() throws Exception {
+        String token = registerAndLogin("metrics@example.com", "Metrics User");
+        java.util.List<String> accounts = accountIds(token);
+
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(accounts.get(0), accounts.get(1), "10.00")))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(accounts.get(0), accounts.get(1), "999999.00")))
+                .andExpect(status().isUnprocessableContent());
+
+        mvc.perform(get("/actuator/metrics/payflow.transfers.completed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("payflow.transfers.completed"))
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.transfers.rejected"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableTags[?(@.tag == 'reason')].values[*]")
+                        .value(org.hamcrest.Matchers.hasItem("insufficient-balance")));
+        mvc.perform(get("/actuator/metrics/payflow.transfers.rejected")
+                        .queryParam("tag", "reason:insufficient-balance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.transfers.duration"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableTags[?(@.tag == 'outcome')]").exists());
     }
 
     @Test

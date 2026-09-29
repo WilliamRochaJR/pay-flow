@@ -77,7 +77,8 @@ Request. Depois do `apply`, salve os outputs como **Environment variables**:
 
 Os ARNs identificam roles e não são secrets. A role de deploy executa somente comandos SSM. A role de
 infraestrutura gerencia os recursos temporários do módulo `production`, seu state e a concessão de
-TTL. Ela não gerencia o bootstrap persistente nem o AWS Budget.
+TTL, incluindo os alarmes CloudWatch efêmeros ligados à EC2. Ela não gerencia o bootstrap persistente
+nem o AWS Budget.
 
 ## Preparar a identidade de development
 

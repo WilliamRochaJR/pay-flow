@@ -22,3 +22,11 @@ output "ssm_start_session_command" {
   description = "Administrative access command that does not require inbound SSH."
   value       = "aws ssm start-session --target ${aws_instance.app.id} --region ${var.aws_region}"
 }
+
+output "cloudwatch_alarm_names" {
+  description = "CloudWatch alarms created with the ephemeral environment."
+  value = [
+    aws_cloudwatch_metric_alarm.instance_status_check.alarm_name,
+    aws_cloudwatch_metric_alarm.high_cpu.alarm_name
+  ]
+}
