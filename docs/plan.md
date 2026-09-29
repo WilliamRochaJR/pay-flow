@@ -88,6 +88,8 @@ de produção. O resultado de `main` foi sincronizado de volta para `develop` pe
 
 ## M3 — eventos sem microserviços
 
+Status: implementação concluída na candidata `v0.4.0`; aguarda estabilização, homologação e promoção.
+
 - [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
 - [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
 - [x] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
