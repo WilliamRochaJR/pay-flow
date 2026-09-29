@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
     public static final String HEADER_NAME = "X-Correlation-ID";
-    public static final String ATTRIBUTE_NAME = CorrelationIdFilter.class.getName() + ".correlationId";
+    public static final String ATTRIBUTE_NAME = "com.payflow.shared.CorrelationIdFilter.correlationId";
     private static final String MDC_KEY = "correlationId";
     private static final Logger log = LoggerFactory.getLogger(CorrelationIdFilter.class);
 

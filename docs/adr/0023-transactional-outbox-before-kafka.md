@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposto.
+Aceito em 2026-09-29.
 
 ## Contexto
 
@@ -16,7 +16,7 @@ O projeto continua sendo uma PoC de baixo custo. Introduzir Kafka, serviço de a
 infraestrutura gerenciada ao mesmo tempo tornaria difícil identificar qual decisão resolveu cada
 necessidade.
 
-## Decisão proposta
+## Decisão
 
 Introduzir eventos em quatro incrementos demonstráveis, mantendo a API como monólito modular:
 
@@ -82,10 +82,21 @@ Começar pela outbox permite testar a garantia principal antes de subir o broker
 opt-in para não tornar o ciclo comum de desenvolvimento mais pesado. A escolha de um serviço Kafka em
 cloud fica adiada até existir necessidade demonstrável e uma opção compatível com o orçamento da PoC.
 
-## Critérios para aceitar este ADR
+## Implementação incremental
 
-- contrato `TransferCompleted.v1` revisado;
-- retenção e tratamento de falhas da outbox definidos;
-- testes de atomicidade, reenvio e deduplicação planejados;
-- custo operacional local e em cloud explicitado;
-- confirmação de que auditoria continuará dentro do monólito durante o M3.
+O M3.1 foi implementado com a migration `V6__create_transactional_outbox.sql`. A conclusão de uma
+transferência grava `TransferCompleted.v1` em `outbox_events` dentro da mesma transação. O reenvio da
+mesma chave de idempotência devolve a transferência existente sem criar outro evento, e uma
+transferência rejeitada não cria evento.
+
+Os campos `attempts` e `published_at` foram incluídos desde a criação da tabela para suportar o relay
+dos próximos incrementos. A política de retenção e o destino de eventos que excederem o limite de
+tentativas serão implementados no M3.4, antes de qualquer operação contínua em cloud.
+
+## Critérios usados para aceitar este ADR
+
+- contrato `TransferCompleted.v1` explícito, versionado e sem dados pessoais;
+- retenção e tratamento de falhas reservados ao M3.4, antes da operação contínua;
+- atomicidade, reenvio e deduplicação cobertos incrementalmente por testes;
+- Kafka permanece local e opcional no M3, sem novo custo em cloud;
+- auditoria permanece dentro do monólito durante o M3.

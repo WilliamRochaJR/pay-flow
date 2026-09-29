@@ -20,7 +20,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.format.annotation.DateTimeFormat;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.validation.annotation.Validated;
+
+import com.payflow.shared.CorrelationIdFilter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -43,8 +46,14 @@ public class TransferController {
     ResponseEntity<TransferResponse> create(@Valid @RequestBody CreateTransferRequest request,
                                             @Parameter(description = "UUID único da tentativa", required = true)
                                             @RequestHeader("Idempotency-Key") UUID idempotencyKey,
+                                            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE_NAME) String correlationId,
                                             @AuthenticationPrincipal Jwt jwt) {
-        TransferResponse response = service.create(request, UUID.fromString(jwt.getSubject()), idempotencyKey);
+        TransferResponse response = service.create(
+                request,
+                UUID.fromString(jwt.getSubject()),
+                idempotencyKey,
+                correlationId
+        );
         var location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
                 .buildAndExpand(response.id()).toUri();
         return ResponseEntity.created(location).body(response);

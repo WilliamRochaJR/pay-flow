@@ -88,8 +88,8 @@ de produção. O resultado de `main` foi sincronizado de volta para `develop` pe
 
 ## M3 — eventos sem microserviços
 
-- [ ] revisar e aceitar o ADR-0023 antes de alterar o runtime;
-- [ ] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
+- [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
+- [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
 - [ ] M3.2: adicionar Kafka local opcional e publicar a outbox por um relay interno;
 - [ ] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
 - [ ] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation

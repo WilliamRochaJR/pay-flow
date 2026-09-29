@@ -1,0 +1,6 @@
+package com.payflow.transfers;
+
+public interface TransferEventRecorder {
+
+    void recordCompleted(Transfer transfer, String correlationId);
+}

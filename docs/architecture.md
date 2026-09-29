@@ -50,6 +50,7 @@ O estado atual e a ordem segura de implementação estão em [Ambientes e promo�
 auth          cadastro, login e tokens
 accounts      propriedade e consulta de saldo
 transfers     regras e execução atômica
+events        contrato e persistência de eventos na outbox
 shared        erros e infraestrutura transversal mínima
 ```
 
@@ -76,6 +77,7 @@ O front-end é organizado por domínio e caso de uso. Cada caso pode conter mode
 - `users`: identidade e credenciais.
 - `accounts`: proprietário, moeda e saldo atual.
 - `transfers`: origem, destino, valor, status, chave de idempotência e timestamps.
+- `outbox_events`: eventos de domínio gravados atomicamente e ainda não publicados.
 
 Restrições essenciais:
 
@@ -108,9 +110,9 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
-O plano incremental e a semântica de entrega estão propostos no
+O plano incremental e a semântica de entrega estão definidos no
 [ADR-0023](adr/0023-transactional-outbox-before-kafka.md). A primeira etapa adiciona somente a outbox
-ao PostgreSQL; broker e consumidor entram em incrementos posteriores.
+ao PostgreSQL e já está implementada; broker e consumidor entram em incrementos posteriores.
 
 ## Segurança e limites
 

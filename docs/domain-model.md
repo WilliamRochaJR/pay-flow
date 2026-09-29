@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M2**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M3.1**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -68,9 +68,25 @@ classDiagram
     }
 
     class TransferService {
-        +create(request) TransferResponse
+        +create(request, correlationId) TransferResponse
         +list(ownerId, page, size, status, from, to) TransferPageResponse
         +find(id) TransferResponse
+    }
+
+    class TransferEventRecorder {
+        <<interface>>
+        +recordCompleted(transfer, correlationId) void
+    }
+
+    class TransferCompletedV1 {
+        +UUID eventId
+        +String eventType
+        +int eventVersion
+        +Instant occurredAt
+        +UUID correlationId
+        +UUID transferId
+        +String amount
+        +String currency
     }
 
     class TransferPageResponse {
@@ -115,6 +131,9 @@ classDiagram
     TransferPageResponse "1" o-- "0..*" TransferResponse : contém
     TransferService ..> Account : debita e credita
     TransferService ..> Transfer : cria e persiste
+    TransferService ..> TransferEventRecorder : registra conclusão
+    TransferEventRecorder ..> TransferCompletedV1 : persiste contrato v1
+    TransferCompletedV1 ..> Transfer : representa conclusão de
     AuthService ..> User : cadastra e consulta
     AuthService ..> TokenService : solicita token
     TokenService ..> User : usa identidade
@@ -144,13 +163,16 @@ As dependências do `TransferService` não recebem cardinalidade porque represen
 
 ## Entidades persistidas
 
-`User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas tabelas `users`, `accounts` e `transfers`.
+`User`, `Account` e `Transfer` são entidades JPA. Seus dados são armazenados respectivamente nas
+tabelas `users`, `accounts` e `transfers`. `outbox_events` é uma tabela operacional acessada por JDBC,
+e não uma entidade de domínio JPA.
 
 ```mermaid
 erDiagram
     USERS ||--|{ ACCOUNTS : possui
     ACCOUNTS ||--o{ TRANSFERS : "conta de origem"
     ACCOUNTS ||--o{ TRANSFERS : "conta de destino"
+    TRANSFERS ||--|| OUTBOX_EVENTS : "gera ao concluir"
 
     ACCOUNTS {
         UUID id PK
@@ -178,6 +200,20 @@ erDiagram
         VARCHAR status
         TIMESTAMPTZ created_at
     }
+
+    OUTBOX_EVENTS {
+        UUID event_id PK
+        VARCHAR aggregate_type
+        UUID aggregate_id
+        VARCHAR event_type
+        SMALLINT event_version
+        TIMESTAMPTZ occurred_at
+        UUID correlation_id
+        JSONB payload
+        INTEGER attempts
+        TIMESTAMPTZ published_at
+        TIMESTAMPTZ created_at
+    }
 ```
 
 Uma conta pode participar de zero ou muitas transferências como origem e de zero ou muitas como destino. No Java, `Transfer` guarda apenas os identificadores das contas, em vez de carregar objetos `Account`. Isso mantém o registro financeiro simples e evita associações JPA desnecessárias.
@@ -193,6 +229,8 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 | `AccountResponse`       | DTO de saída         | expor uma conta sem devolver diretamente a entidade JPA        |
 | `TransferResponse`      | DTO de saída         | expor uma transferência no contrato HTTP                       |
 | `TransferService`       | serviço de aplicação | coordenar validações, débito, crédito e persistência atômica   |
+| `TransferEventRecorder` | porta de aplicação   | registrar a conclusão sem acoplar o caso de uso ao JDBC        |
+| `TransferCompletedV1`   | contrato de evento   | representar de forma versionada uma transferência concluída    |
 | `User`                  | entidade JPA         | armazenar identidade, e-mail normalizado e hash da senha       |
 | `AuthService`           | serviço de aplicação | coordenar cadastro, login e consulta do usuário                |
 | `TokenService`          | serviço de segurança | emitir access token JWT com validade curta                     |
@@ -210,6 +248,7 @@ sequenceDiagram
     participant Source as Account origem
     participant Destination as Account destino
     participant Transfers as TransferRepository
+    participant Outbox as outbox_events
 
     Client->>Controller: POST /api/v1/transfers
     Controller->>Service: create(CreateTransferRequest)
@@ -219,11 +258,16 @@ sequenceDiagram
     Service->>Destination: credit(amount)
     Service->>Transfers: save(Transfer.completed(...))
     Transfers-->>Service: Transfer persistida
+    Service->>Outbox: INSERT TransferCompleted.v1
+    Note over Service,Outbox: mesma transação PostgreSQL
     Service-->>Controller: TransferResponse
     Controller-->>Client: 201 Created
 ```
 
-O método do serviço é transacional: débito, crédito e criação da transferência formam uma única operação. Se uma regra falhar, como saldo insuficiente, nenhuma parte deve permanecer gravada.
+O método do serviço é transacional: débito, crédito, criação da transferência e registro da outbox
+formam uma única operação. Se uma regra falhar, como saldo insuficiente, nenhuma parte deve permanecer
+gravada. Repetir a mesma chave de idempotência retorna a transferência já existente e não duplica o
+evento.
 
 ## Regras representadas no modelo
 
@@ -238,6 +282,7 @@ O método do serviço é transacional: débito, crédito e criação da transfer
 
 ## Evolução planejada
 
-O modelo acima mostra somente o que existe no código. A chave de idempotência já protege a criação de
-transferências. O estorno permanece planejado e deverá entrar no diagrama somente quando for
+O modelo acima mostra somente o que existe no código. A chave de idempotência protege a criação de
+transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay e o
+Kafka entram no M3.2. O estorno permanece planejado e deverá entrar no diagrama somente quando for
 implementado como uma nova operação, sem alterar transferências concluídas.
