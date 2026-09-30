@@ -4,6 +4,37 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.4.0] - 2026-09-29
+
+### Adicionado
+
+- evento versionado `TransferCompleted.v1`, sem dados pessoais;
+- outbox transacional gravada atomicamente com a transferência;
+- Kafka local opcional em modo KRaft e relay interno para publicar a outbox;
+- consumidor de auditoria dentro do monólito, com deduplicação persistente por consumidor e evento;
+- projeção de auditoria em PostgreSQL e tópico de dead letter para falhas persistentes;
+- métricas de publicação, consumo, deduplicação, esgotamento e retenção de eventos.
+
+### Alterado
+
+- o relay limita a publicação a cinco tentativas e preserva a última falha para diagnóstico;
+- o consumidor executa duas retentativas antes de encaminhar a mensagem ao tópico DLT;
+- outboxes publicadas e mensagens Kafka possuem retenção padrão de sete dias;
+- logs de publicação e auditoria reutilizam o `correlationId` da requisição original.
+
+### Segurança
+
+- Kafka permanece local, opcional e fora do runtime AWS;
+- eventos não carregam nome, e-mail, senha, token ou outros dados pessoais;
+- identificadores de evento e correlação não são usados como tags de métricas.
+
+### Observações
+
+- PostgreSQL continua sendo a fonte de verdade de saldos e transferências;
+- Kafka executa somente efeitos secundários depois da confirmação financeira;
+- a entrega é pelo menos uma vez e os consumidores precisam permanecer idempotentes;
+- a adoção de Kafka em cloud depende de decisão arquitetural e análise de custo posteriores.
+
 ## [0.3.0] - 2026-09-28
 
 ### Adicionado
@@ -94,6 +125,7 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - a demonstração pública não movimenta dinheiro real;
 - os ambientes AWS permanecem desligados por padrão e são removidos depois do TTL.
 
+[0.4.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0
 [0.3.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.2.0
 [0.1.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.1.0
