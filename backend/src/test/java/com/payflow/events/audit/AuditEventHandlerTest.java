@@ -2,6 +2,7 @@ package com.payflow.events.audit;
 
 import com.payflow.events.EventMetrics;
 import com.payflow.events.outbox.TransferCompletedV1;
+import com.payflow.events.outbox.TransferReversedV1;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -32,6 +33,8 @@ class AuditEventHandlerTest {
     @Test
     void recordsAnEventClaimedForTheFirstTime() throws Exception {
         TransferCompletedV1 event = event("TransferCompleted", 1);
+        when(objectMapper.readValue("payload", AuditEventHandler.EventDescriptor.class))
+                .thenReturn(new AuditEventHandler.EventDescriptor("TransferCompleted", 1));
         when(objectMapper.readValue("payload", TransferCompletedV1.class)).thenReturn(event);
         when(repository.claim("payflow-audit", event.eventId())).thenReturn(true);
 
@@ -44,6 +47,8 @@ class AuditEventHandlerTest {
     @Test
     void ignoresAnEventAlreadyProcessedByThisConsumer() throws Exception {
         TransferCompletedV1 event = event("TransferCompleted", 1);
+        when(objectMapper.readValue("payload", AuditEventHandler.EventDescriptor.class))
+                .thenReturn(new AuditEventHandler.EventDescriptor("TransferCompleted", 1));
         when(objectMapper.readValue("payload", TransferCompletedV1.class)).thenReturn(event);
         when(repository.claim("payflow-audit", event.eventId())).thenReturn(false);
 
@@ -55,23 +60,38 @@ class AuditEventHandlerTest {
 
     @Test
     void rejectsAnUnsupportedContractBeforeClaimingIt() throws Exception {
-        TransferCompletedV1 event = event("TransferCompleted", 2);
-        when(objectMapper.readValue("payload", TransferCompletedV1.class)).thenReturn(event);
+        when(objectMapper.readValue("payload", AuditEventHandler.EventDescriptor.class))
+                .thenReturn(new AuditEventHandler.EventDescriptor("TransferCompleted", 2));
 
         assertThatThrownBy(() -> handler().handle("payload"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Unsupported transfer event contract.");
-        verify(repository, never()).claim("payflow-audit", event.eventId());
+        verify(repository, never()).claim(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void recordsAReversalEventWithTheSameDeduplicationFlow() throws Exception {
+        TransferReversedV1 event = reversedEvent();
+        when(objectMapper.readValue("payload", AuditEventHandler.EventDescriptor.class))
+                .thenReturn(new AuditEventHandler.EventDescriptor("TransferReversed", 1));
+        when(objectMapper.readValue("payload", TransferReversedV1.class)).thenReturn(event);
+        when(repository.claim("payflow-audit", event.eventId())).thenReturn(true);
+
+        handler().handle("payload");
+
+        verify(repository).record(event, "payload");
+        verify(metrics).auditProcessed(false);
     }
 
     @Test
     void rejectsMalformedJson() throws Exception {
         JacksonException failure = org.mockito.Mockito.mock(JacksonException.class);
-        when(objectMapper.readValue("invalid", TransferCompletedV1.class)).thenThrow(failure);
+        when(objectMapper.readValue("invalid", AuditEventHandler.EventDescriptor.class)).thenThrow(failure);
 
         assertThatThrownBy(() -> handler().handle("invalid"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid TransferCompleted.v1 payload.")
+                .hasMessage("Invalid transfer event payload.")
                 .hasCause(failure);
     }
 
@@ -92,6 +112,22 @@ class AuditEventHandlerTest {
                 type,
                 version,
                 Instant.now(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "25.00",
+                "BRL"
+        );
+    }
+
+    private TransferReversedV1 reversedEvent() {
+        return new TransferReversedV1(
+                UUID.randomUUID(),
+                "TransferReversed",
+                1,
+                Instant.now(),
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),

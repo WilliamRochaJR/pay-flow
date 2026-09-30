@@ -182,3 +182,8 @@ sem movimentar os saldos novamente. Uma chave diferente para uma transferência 
 
 A resposta usa `type: "REVERSAL"` e informa `originalTransferId`. Transferências comuns usam
 `type: "INTERNAL_TRANSFER"` e não possuem vínculo de origem.
+
+Na mesma transação que conclui o estorno, a outbox grava `TransferReversed.v1`. O contrato inclui
+`eventId`, `eventType`, `eventVersion`, `occurredAt`, `correlationId`, `transferId`,
+`originalTransferId`, contas, valor e moeda. O relay publica transferências e estornos no tópico local
+`payflow.transfer-events.v1`; o consumidor os deduplica e preserva a projeção em `audit_events`.

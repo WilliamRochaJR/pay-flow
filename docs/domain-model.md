@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M5.1.1**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M5.1.2**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -100,6 +100,18 @@ classDiagram
         +String currency
     }
 
+    class TransferReversedV1 {
+        +UUID eventId
+        +String eventType
+        +int eventVersion
+        +Instant occurredAt
+        +UUID correlationId
+        +UUID transferId
+        +UUID originalTransferId
+        +String amount
+        +String currency
+    }
+
     class OutboxRelay {
         +publishPending() void
     }
@@ -168,11 +180,14 @@ classDiagram
     TransferService ..> Transfer : cria e persiste
     TransferService ..> TransferEventRecorder : registra conclusão
     TransferEventRecorder ..> TransferCompletedV1 : persiste contrato v1
+    TransferEventRecorder ..> TransferReversedV1 : persiste estorno v1
     TransferCompletedV1 ..> Transfer : representa conclusão de
     OutboxRelay ..> OutboxEventPublisher : publica por
     OutboxRelay ..> TransferCompletedV1 : encaminha payload de
+    OutboxRelay ..> TransferReversedV1 : encaminha payload de
     TransferAuditConsumer ..> AuditEventHandler : delega mensagem
     AuditEventHandler ..> TransferCompletedV1 : valida e desserializa
+    AuditEventHandler ..> TransferReversedV1 : valida e desserializa
     AuditEventHandler ..> AuditEventRepository : deduplica e registra
     AuthService ..> User : cadastra e consulta
     AuthService ..> TokenService : solicita token
@@ -271,6 +286,7 @@ erDiagram
     AUDIT_EVENTS {
         UUID event_id PK
         UUID transfer_id
+        UUID original_transfer_id
         VARCHAR event_type
         SMALLINT event_version
         TIMESTAMPTZ occurred_at
@@ -296,6 +312,7 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 | `TransferService`       | serviço de aplicação    | coordenar validações, débito, crédito e persistência atômica   |
 | `TransferEventRecorder` | porta de aplicação      | registrar a conclusão sem acoplar o caso de uso ao JDBC        |
 | `TransferCompletedV1`   | contrato de evento      | representar de forma versionada uma transferência concluída    |
+| `TransferReversedV1`    | contrato de evento      | representar de forma versionada um estorno concluído           |
 | `OutboxRelay`           | serviço agendado        | bloquear e publicar pequenos lotes de eventos pendentes        |
 | `OutboxEventPublisher`  | porta de infraestrutura | abstrair a publicação no broker                                |
 | `TransferAuditConsumer` | adaptador Kafka         | receber o payload e delegar seu processamento                  |
@@ -318,6 +335,7 @@ sequenceDiagram
     participant Source as Account origem
     participant Destination as Account destino
     participant Transfers as TransferRepository
+    participant Outbox as outbox_events
     participant Outbox as outbox_events
 
     Client->>Controller: POST /api/v1/transfers
@@ -357,13 +375,15 @@ sequenceDiagram
     Service->>Accounts: validar mesmo proprietário e saldo
     Service->>Accounts: debitar destino original e creditar origem original
     Service->>Transfers: save(Transfer.reversalOf(original))
+    Service->>Outbox: INSERT TransferReversed.v1
+    Note over Service,Outbox: mesma transação PostgreSQL
     Service-->>Controller: TransferResponse REVERSAL
     Controller-->>Client: 201 Created
 ```
 
 A transferência original continua `COMPLETED`. Uma restrição única em `original_transfer_id`, o lock
 da operação original e a chave idempotente impedem dois estornos mesmo sob requisições concorrentes.
-O evento do estorno entra no M5.1.2; até lá, somente transferências comuns geram outbox.
+O estorno e `TransferReversed.v1` são confirmados ou revertidos juntos.
 
 ## Regras representadas no modelo
 
@@ -384,4 +404,5 @@ O modelo acima mostra somente o que existe no código. A chave de idempotência 
 transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
 M3.2 entrega esses registros ao Kafka local opcional e o consumidor do M3.3 cria a projeção de
 auditoria com deduplicação persistente. O M5.1.1 acrescenta estorno integral como uma nova operação
-imutável. O próximo incremento publica `TransferReversed.v1` na mesma outbox e o projeta na auditoria.
+imutável, e o M5.1.2 publica `TransferReversed.v1` na mesma outbox e o projeta na auditoria. O próximo
+incremento expõe o caso de uso no front-end.

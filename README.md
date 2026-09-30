@@ -39,15 +39,15 @@ Compose base com o arquivo opcional:
 docker compose -f compose.yaml -f compose.events.yaml up --build --wait
 ```
 
-Nesse modo, a API publica `TransferCompleted.v1` no tópico
-`payflow.transfer-completed.v1` e o módulo de auditoria consome cada evento uma única vez do ponto de
+Nesse modo, a API publica `TransferCompleted.v1` e `TransferReversed.v1` no tópico
+`payflow.transfer-events.v1`, e o módulo de auditoria consome cada evento uma única vez do ponto de
 vista do efeito persistido. Para visualizar os eventos:
 
 ```bash
 docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
-  --topic payflow.transfer-completed.v1 \
+  --topic payflow.transfer-events.v1 \
   --from-beginning
 ```
 
@@ -57,7 +57,7 @@ Mensagens que continuam falhando após duas retentativas são preservadas no tó
 docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
-  --topic payflow.transfer-completed.v1.DLT \
+  --topic payflow.transfer-events.v1.DLT \
   --from-beginning
 ```
 
@@ -69,7 +69,7 @@ Para conferir as projeções de auditoria e os eventos já processados:
 ```bash
 docker compose -f compose.yaml -f compose.events.yaml exec db \
   psql -U payflow -d payflow -c \
-  'SELECT event_id, transfer_id, event_type, occurred_at FROM audit_events;'
+  'SELECT event_id, transfer_id, original_transfer_id, event_type, occurred_at FROM audit_events;'
 
 docker compose -f compose.yaml -f compose.events.yaml exec db \
   psql -U payflow -d payflow -c \

@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 class OutboxRelayConfiguration {
 
     @Bean
-    NewTopic transferCompletedTopic(OutboxRelayProperties properties) {
+    NewTopic transferEventsTopic(OutboxRelayProperties properties) {
         return TopicBuilder.name(properties.topic())
                 .partitions(1)
                 .replicas(1)

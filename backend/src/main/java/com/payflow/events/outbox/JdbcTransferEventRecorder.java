@@ -15,7 +15,8 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class JdbcTransferEventRecorder implements TransferEventRecorder {
 
-    static final String EVENT_TYPE = "TransferCompleted";
+    static final String COMPLETED_EVENT_TYPE = "TransferCompleted";
+    static final String REVERSED_EVENT_TYPE = "TransferReversed";
     static final int EVENT_VERSION = 1;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -32,7 +33,7 @@ public class JdbcTransferEventRecorder implements TransferEventRecorder {
         Instant occurredAt = transfer.getCreatedAt();
         var event = new TransferCompletedV1(
                 eventId,
-                EVENT_TYPE,
+                COMPLETED_EVENT_TYPE,
                 EVENT_VERSION,
                 occurredAt,
                 parsedCorrelationId,
@@ -43,28 +44,53 @@ public class JdbcTransferEventRecorder implements TransferEventRecorder {
                 transfer.getCurrency()
         );
 
+        persist(event);
+    }
+
+    @Override
+    public void recordReversed(Transfer reversal, String correlationId) {
+        UUID eventId = UUID.randomUUID();
+        UUID parsedCorrelationId = UUID.fromString(correlationId);
+        Instant occurredAt = reversal.getCreatedAt();
+        var event = new TransferReversedV1(
+                eventId,
+                REVERSED_EVENT_TYPE,
+                EVENT_VERSION,
+                occurredAt,
+                parsedCorrelationId,
+                reversal.getId(),
+                reversal.getOriginalTransferId(),
+                reversal.getSourceAccountId(),
+                reversal.getDestinationAccountId(),
+                reversal.getAmount().toPlainString(),
+                reversal.getCurrency()
+        );
+        persist(event);
+    }
+
+    private void persist(TransferEventV1 event) {
         jdbcTemplate.update("""
                 INSERT INTO outbox_events (
                     event_id, aggregate_type, aggregate_id, event_type, event_version,
                     occurred_at, correlation_id, payload, created_at
                 ) VALUES (?, 'Transfer', ?, ?, ?, ?, ?, CAST(? AS jsonb), ?)
                 """,
-                eventId,
-                transfer.getId(),
-                EVENT_TYPE,
-                EVENT_VERSION,
-                Timestamp.from(occurredAt),
-                parsedCorrelationId,
+                event.eventId(),
+                event.transferId(),
+                event.eventType(),
+                event.eventVersion(),
+                Timestamp.from(event.occurredAt()),
+                event.correlationId(),
                 serialize(event),
                 Timestamp.from(Instant.now())
         );
     }
 
-    private String serialize(TransferCompletedV1 event) {
+    private String serialize(TransferEventV1 event) {
         try {
             return objectMapper.writeValueAsString(event);
         } catch (JacksonException exception) {
-            throw new IllegalStateException("Unable to serialize TransferCompleted.v1.", exception);
+            throw new IllegalStateException("Unable to serialize transfer event.", exception);
         }
     }
 }

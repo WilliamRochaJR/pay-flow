@@ -11,12 +11,19 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - endpoint idempotente para estorno integral de transferências entre contas do mesmo usuário;
 - tipo `REVERSAL` vinculado à transferência original, sem alterar o registro concluído;
 - migration com constraints e índice único para impedir vínculos inválidos e estorno duplicado;
-- testes com PostgreSQL real para saldo, autorização, idempotência e concorrência do estorno.
+- testes com PostgreSQL real para saldo, autorização, idempotência e concorrência do estorno;
+- evento `TransferReversed.v1` gravado na outbox na mesma transação do estorno;
+- projeção de auditoria com `original_transfer_id` pesquisável para eventos de estorno;
 
 ### Segurança
 
 - estornos não podem debitar unilateralmente uma conta pertencente a outro usuário;
 - a rota de estorno compartilha o rate limit autenticado das transferências.
+
+### Alterado
+
+- o tópico Kafka local passa a se chamar `payflow.transfer-events.v1` para transportar contratos de
+  conclusão e estorno sem publicar eventos em um tópico semanticamente incorreto.
 
 ## [0.4.0] - 2026-09-29
 

@@ -38,7 +38,8 @@ public class TransferService {
     }
 
     @Transactional
-    public TransferResponse reverse(UUID originalTransferId, UUID ownerId, UUID idempotencyKey) {
+    public TransferResponse reverse(UUID originalTransferId, UUID ownerId, UUID idempotencyKey,
+                                    String correlationId) {
         lockIdempotencyKey(ownerId, idempotencyKey);
         var previous = transferRepository.findByOwnerIdAndIdempotencyKey(ownerId, idempotencyKey);
         if (previous.isPresent()) {
@@ -81,6 +82,7 @@ public class TransferService {
         originalDestination.debit(original.getAmount());
         originalSource.credit(original.getAmount());
         Transfer reversal = transferRepository.save(Transfer.reversalOf(original, ownerId, idempotencyKey));
+        eventRecorder.recordReversed(reversal, correlationId);
         metrics.completedAfterCommit();
         return TransferResponse.from(reversal);
     }
