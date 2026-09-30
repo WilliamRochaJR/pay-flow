@@ -86,9 +86,12 @@ do TTL. Uma incompatibilidade entre o comando de remoção do parâmetro SSM e a
 detectada na primeira limpeza de homologação, corrigida antes da tag e validada com sucesso na limpeza
 de produção. O resultado de `main` foi sincronizado de volta para `develop` pelo PR #52.
 
-## M3 — eventos sem microserviços
+## M3 — eventos sem microserviços ✅
 
-Status: implementação concluída na candidata `v0.4.0`; aguarda estabilização, homologação e promoção.
+Status: concluído com a publicação da versão `v0.4.0` em 2026-09-29. A candidata foi validada em
+`homologation`; a mesma revisão foi integrada em `main`, identificada pela tag anotada `v0.4.0` e
+promovida para `production`. Os dois ambientes foram destruídos automaticamente ao final do TTL, e
+o resultado de `main` foi sincronizado de volta para `develop` pelo PR #61.
 
 - [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
 - [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
@@ -96,7 +99,8 @@ Status: implementação concluída na candidata `v0.4.0`; aguarda estabilizaçã
 - [x] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
 - [x] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
       ID;
-- [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.
+- Kafka em cloud permanece adiado: uma futura adoção exige necessidade operacional mensurável e um
+  ADR separado.
 
 Critério de promoção: o fluxo síncrono está estável e existe necessidade demonstrável de executar efeitos secundários sem aumentar a latência da transferência.
 
