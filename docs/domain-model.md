@@ -1,6 +1,6 @@
 # Modelo de classes
 
-Este documento representa o modelo implementado até o **M3.4**. Ele separa entidades persistidas,
+Este documento representa o modelo implementado até o **M5.1.1**. Ele separa entidades persistidas,
 objetos do contrato HTTP e serviços responsáveis pelo fluxo de transferência.
 
 ## Visão geral das classes
@@ -38,9 +38,18 @@ classDiagram
         -UUID destinationAccountId
         -BigDecimal amount
         -String currency
+        -TransferType type
+        -UUID originalTransferId
         -TransferStatus status
         -Instant createdAt
         +completed(sourceId, destinationId, amount, currency) Transfer
+        +reversalOf(original, ownerId, idempotencyKey) Transfer
+    }
+
+    class TransferType {
+        <<enumeration>>
+        INTERNAL_TRANSFER
+        REVERSAL
     }
 
     class TransferStatus {
@@ -57,7 +66,8 @@ classDiagram
 
     class TransferResponse {
         +UUID id
-        +String type
+        +TransferType type
+        +UUID originalTransferId
         +UUID sourceAccountId
         +UUID destinationAccountId
         +BigDecimal amount
@@ -69,6 +79,7 @@ classDiagram
 
     class TransferService {
         +create(request, correlationId) TransferResponse
+        +reverse(originalId, ownerId, idempotencyKey) TransferResponse
         +list(ownerId, page, size, status, from, to) TransferPageResponse
         +find(id) TransferResponse
     }
@@ -145,6 +156,8 @@ classDiagram
     Account "1" --> "0..*" Transfer : destino de
     AccountResponse "1" ..> "1" Account : converte uma
     Transfer "0..*" --> "1" TransferStatus : possui
+    Transfer "0..*" --> "1" TransferType : classificada como
+    Transfer "1" --> "0..1" Transfer : pode ser compensada por
     TransferResponse "1" ..> "1" Transfer : converte uma
     TransferResponse "0..*" --> "1" TransferStatus : expõe
     TransferService ..> CreateTransferRequest : recebe
@@ -199,7 +212,7 @@ erDiagram
     USERS ||--|{ ACCOUNTS : possui
     ACCOUNTS ||--o{ TRANSFERS : "conta de origem"
     ACCOUNTS ||--o{ TRANSFERS : "conta de destino"
-    TRANSFERS ||--|| OUTBOX_EVENTS : "gera ao concluir"
+    TRANSFERS ||--o| OUTBOX_EVENTS : "pode gerar ao concluir"
     OUTBOX_EVENTS ||--|| AUDIT_EVENTS : "projeta ao consumir"
     OUTBOX_EVENTS ||--|{ PROCESSED_EVENTS : "pode ser processado por consumidores"
 
@@ -226,6 +239,8 @@ erDiagram
         UUID destination_account_id FK
         NUMERIC amount
         VARCHAR currency
+        VARCHAR type
+        UUID original_transfer_id FK,UK
         VARCHAR status
         TIMESTAMPTZ created_at
     }
@@ -274,6 +289,7 @@ Uma conta pode participar de zero ou muitas transferências como origem e de zer
 | `Account`               | entidade JPA            | manter saldo e aplicar as regras de débito e crédito           |
 | `Transfer`              | entidade JPA            | representar o registro imutável de uma transferência concluída |
 | `TransferStatus`        | enum                    | limitar os estados válidos da transferência                    |
+| `TransferType`          | enum                    | distinguir transferência comum de estorno                      |
 | `CreateTransferRequest` | DTO de entrada          | receber e validar os dados enviados pelo cliente               |
 | `AccountResponse`       | DTO de saída            | expor uma conta sem devolver diretamente a entidade JPA        |
 | `TransferResponse`      | DTO de saída            | expor uma transferência no contrato HTTP                       |
@@ -323,6 +339,32 @@ formam uma única operação. Se uma regra falhar, como saldo insuficiente, nenh
 gravada. Repetir a mesma chave de idempotência retorna a transferência já existente e não duplica o
 evento.
 
+## Fluxo de estorno
+
+```mermaid
+sequenceDiagram
+    actor Client as Front-end/cliente
+    participant Controller as TransferController
+    participant Service as TransferService
+    participant Original as Transfer original
+    participant Accounts as AccountRepository
+    participant Transfers as TransferRepository
+
+    Client->>Controller: POST /transfers/{id}/reversals
+    Controller->>Service: reverse(id, ownerId, idempotencyKey)
+    Service->>Original: bloquear e validar propriedade/tipo
+    Service->>Accounts: bloquear as duas contas em ordem
+    Service->>Accounts: validar mesmo proprietário e saldo
+    Service->>Accounts: debitar destino original e creditar origem original
+    Service->>Transfers: save(Transfer.reversalOf(original))
+    Service-->>Controller: TransferResponse REVERSAL
+    Controller-->>Client: 201 Created
+```
+
+A transferência original continua `COMPLETED`. Uma restrição única em `original_transfer_id`, o lock
+da operação original e a chave idempotente impedem dois estornos mesmo sob requisições concorrentes.
+O evento do estorno entra no M5.1.2; até lá, somente transferências comuns geram outbox.
+
 ## Regras representadas no modelo
 
 - dinheiro usa `BigDecimal` no Java e `NUMERIC(19,2)` no PostgreSQL;
@@ -332,13 +374,14 @@ evento.
 - as duas contas devem usar a moeda informada;
 - uma transferência criada neste marco recebe o estado `COMPLETED`;
 - transferências concluídas não possuem operação de alteração ou exclusão;
+- cada transferência comum admite no máximo um estorno integral;
+- um estorno aponta para a operação original e não pode ser estornado novamente;
 - `Account.version` oferece suporte a controle de concorrência otimista pelo JPA.
 
-## Evolução planejada
+## Evolução
 
 O modelo acima mostra somente o que existe no código. A chave de idempotência protege a criação de
 transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
 M3.2 entrega esses registros ao Kafka local opcional e o consumidor do M3.3 cria a projeção de
-auditoria com deduplicação persistente. O estorno permanece planejado e deverá entrar
-no diagrama somente quando for implementado como uma nova operação, sem alterar transferências
-concluídas.
+auditoria com deduplicação persistente. O M5.1.1 acrescenta estorno integral como uma nova operação
+imutável. O próximo incremento publica `TransferReversed.v1` na mesma outbox e o projeta na auditoria.

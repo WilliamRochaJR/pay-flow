@@ -4,6 +4,20 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Não publicado]
+
+### Adicionado
+
+- endpoint idempotente para estorno integral de transferências entre contas do mesmo usuário;
+- tipo `REVERSAL` vinculado à transferência original, sem alterar o registro concluído;
+- migration com constraints e índice único para impedir vínculos inválidos e estorno duplicado;
+- testes com PostgreSQL real para saldo, autorização, idempotência e concorrência do estorno.
+
+### Segurança
+
+- estornos não podem debitar unilateralmente uma conta pertencente a outro usuário;
+- a rota de estorno compartilha o rate limit autenticado das transferências.
+
 ## [0.4.0] - 2026-09-29
 
 ### Adicionado

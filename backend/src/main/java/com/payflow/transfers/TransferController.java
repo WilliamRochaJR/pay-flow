@@ -40,6 +40,22 @@ public class TransferController {
         this.service = service;
     }
 
+    @PostMapping("/{id}/reversals")
+    @Operation(summary = "Estornar integralmente uma transferência")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<TransferResponse> reverse(
+            @PathVariable UUID id,
+            @Parameter(description = "UUID único da tentativa", required = true)
+            @RequestHeader("Idempotency-Key") UUID idempotencyKey,
+            @AuthenticationPrincipal Jwt jwt) {
+        TransferResponse response = service.reverse(id, UUID.fromString(jwt.getSubject()), idempotencyKey);
+        var location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/api/v1/transfers/{id}")
+                .buildAndExpand(response.id())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
+    }
+
     @PostMapping
     @Operation(summary = "Criar uma transferência")
     @SecurityRequirement(name = "bearerAuth")

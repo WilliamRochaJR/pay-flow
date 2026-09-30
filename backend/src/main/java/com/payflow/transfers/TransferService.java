@@ -38,6 +38,54 @@ public class TransferService {
     }
 
     @Transactional
+    public TransferResponse reverse(UUID originalTransferId, UUID ownerId, UUID idempotencyKey) {
+        lockIdempotencyKey(ownerId, idempotencyKey);
+        var previous = transferRepository.findByOwnerIdAndIdempotencyKey(ownerId, idempotencyKey);
+        if (previous.isPresent()) {
+            Transfer transfer = previous.get();
+            if (transfer.getType() == TransferType.REVERSAL
+                    && originalTransferId.equals(transfer.getOriginalTransferId())) {
+                metrics.replayedAfterCommit();
+                return TransferResponse.from(transfer);
+            }
+            metrics.rejected("idempotency-conflict");
+            throw new BusinessException("idempotency-conflict",
+                    "A Idempotency-Key já foi utilizada com dados diferentes.");
+        }
+
+        Transfer original = transferRepository.findOwnedByIdForUpdate(originalTransferId, ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transferência não encontrada."));
+        if (original.getType() != TransferType.INTERNAL_TRANSFER) {
+            metrics.rejected("reversal-not-allowed");
+            throw new BusinessException("reversal-not-allowed", "Um estorno não pode ser estornado.");
+        }
+        if (transferRepository.findByOriginalTransferId(originalTransferId).isPresent()) {
+            metrics.rejected("reversal-already-exists");
+            throw new BusinessException("reversal-already-exists", "A transferência já possui um estorno.");
+        }
+
+        List<Account> lockedAccounts = accountRepository.findAllForUpdate(
+                List.of(original.getSourceAccountId(), original.getDestinationAccountId())
+        );
+        if (lockedAccounts.size() != 2) {
+            throw new ResourceNotFoundException("Conta de origem ou destino não encontrada.");
+        }
+        Map<UUID, Account> byId = lockedAccounts.stream()
+                .collect(Collectors.toMap(Account::getId, Function.identity()));
+        Account originalSource = byId.get(original.getSourceAccountId());
+        Account originalDestination = byId.get(original.getDestinationAccountId());
+        if (!originalSource.getOwnerId().equals(ownerId) || !originalDestination.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Transferência não encontrada.");
+        }
+
+        originalDestination.debit(original.getAmount());
+        originalSource.credit(original.getAmount());
+        Transfer reversal = transferRepository.save(Transfer.reversalOf(original, ownerId, idempotencyKey));
+        metrics.completedAfterCommit();
+        return TransferResponse.from(reversal);
+    }
+
+    @Transactional
     public TransferResponse create(CreateTransferRequest request, UUID ownerId, UUID idempotencyKey,
                                    String correlationId) {
         long startedAtNanos = System.nanoTime();

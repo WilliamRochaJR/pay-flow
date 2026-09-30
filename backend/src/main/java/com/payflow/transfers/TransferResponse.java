@@ -6,7 +6,8 @@ import java.util.UUID;
 
 public record TransferResponse(
         UUID id,
-        String type,
+        TransferType type,
+        UUID originalTransferId,
         UUID sourceAccountId,
         UUID destinationAccountId,
         BigDecimal amount,
@@ -17,7 +18,8 @@ public record TransferResponse(
     static TransferResponse from(Transfer transfer) {
         return new TransferResponse(
                 transfer.getId(),
-                "INTERNAL_TRANSFER",
+                transfer.getType(),
+                transfer.getOriginalTransferId(),
                 transfer.getSourceAccountId(),
                 transfer.getDestinationAccountId(),
                 transfer.getAmount(),

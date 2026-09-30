@@ -162,9 +162,9 @@ não alteram as regras de autorização.
 Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro
 histórico; o ADR-0025 define o estorno como uma nova operação vinculada à original.
 
-## Próxima evolução: estorno integral
+## Estorno integral — M5.1.1
 
-O ADR-0025 planeja o contrato abaixo para o M5.1:
+O ADR-0025 define o contrato:
 
 ```http
 POST /api/v1/transfers/{transferId}/reversals
@@ -173,5 +173,12 @@ Idempotency-Key: <uuid>
 ```
 
 O endpoint não recebe corpo. Ele cria uma nova transferência `REVERSAL`, com contas invertidas e o
-mesmo valor e moeda da original. A transferência original permanece imutável. Até o M5.1.1 ser
-implementado, este endpoint é apenas um contrato planejado e ainda responde como rota inexistente.
+mesmo valor e moeda da original. A transferência original permanece imutável. Nesta primeira etapa,
+o estorno é permitido somente quando as duas contas continuam pertencendo ao usuário autenticado.
+
+A primeira tentativa retorna `201 Created`. Repetir a mesma `Idempotency-Key` devolve o mesmo estorno
+sem movimentar os saldos novamente. Uma chave diferente para uma transferência já estornada retorna
+`409 Conflict`. Saldo insuficiente na conta que devolveria o valor retorna `422 Unprocessable Entity`.
+
+A resposta usa `type: "REVERSAL"` e informa `originalTransferId`. Transferências comuns usam
+`type: "INTERNAL_TRANSFER"` e não possuem vínculo de origem.
