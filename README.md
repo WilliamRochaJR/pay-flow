@@ -14,7 +14,9 @@ A primeira versão pública será um **monólito modular**, executado com Docker
 
 O primeiro fluxo vertical já inclui contas fictícias, transferência atômica, atualização de saldos e histórico.
 
-O fluxo inclui cadastro e login no React, senha protegida por BCrypt, autenticação JWT e contas isoladas por usuário. O token permanece somente em memória e é descartado ao sair ou atualizar a página.
+O fluxo inclui cadastro e login no React, senha protegida por BCrypt, autenticação JWT e contas
+isoladas por usuário. O token fica no `sessionStorage`: sobrevive à atualização da página na mesma aba
+e é descartado ao sair ou ao encerrar a sessão do navegador.
 
 ### Executar tudo com Docker
 
@@ -117,6 +119,14 @@ O usuário poderá:
 
 O release público inclui autenticação JWT, validação de saldo, transferência atômica e uma interface responsiva. Não movimenta dinheiro real e será identificado como ambiente de demonstração.
 
+## Demonstração visual
+
+![Dashboard do PayFlow após uma transferência](docs/assets/portfolio/dashboard.png)
+
+As capturas são geradas a partir da aplicação real, com dados exclusivamente fictícios. Consulte a
+[avaliação de prontidão do portfólio](docs/portfolio-readiness.md) para ver as evidências e limitações
+da demonstração.
+
 ## Documentação
 
 - [Plano de entrega](docs/plan.md)
@@ -127,6 +137,7 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 - [Processo de release](docs/releases/README.md)
 - [Ambientes e promoção](docs/environments.md)
 - [Observabilidade](docs/observability.md)
+- [Prontidão do portfólio](docs/portfolio-readiness.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 - [Infraestrutura AWS com Terraform](infra/README.md)
 - [Runtime de produção com Compose e Caddy](deploy/README.md)

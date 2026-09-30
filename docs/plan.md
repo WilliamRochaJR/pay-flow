@@ -136,10 +136,13 @@ Esses itens não são requisitos para declarar o portfólio pronto.
 
 ## Definição de pronto do portfólio
 
-- URL pública funcional; HTTPS quando houver um domínio validável;
-- repositório com README, diagrama, ADRs e instruções de execução;
-- dados exclusivamente fictícios;
-- pipeline verde;
-- demonstração gravada ou screenshots;
-- decisões e trade-offs explicáveis em entrevista;
-- custo mensal e procedimento de desligamento documentados.
+- [x] fluxo validado em URL pública efêmera; HTTPS permanece condicionado a um domínio validável;
+- [x] repositório com README, diagrama, ADRs e instruções de execução;
+- [x] dados exclusivamente fictícios;
+- [x] pipeline verde;
+- [x] screenshots reproduzíveis da aplicação;
+- [x] decisões e trade-offs explicáveis em entrevista;
+- [x] controle de custo mensal e procedimento de desligamento documentados.
+
+As evidências e limitações estão consolidadas em
+[`portfolio-readiness.md`](portfolio-readiness.md).
