@@ -134,9 +134,9 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 ## Estado
 
 M0, M1, M2 e M3 estão concluídos. A versão
-[`v0.3.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0) formaliza a base confiável
-publicada. A candidata `v0.4.0` acrescenta eventos no monólito, com outbox transacional, Kafka local,
-auditoria deduplicada e tratamento operacional de falhas, sem manter nova infraestrutura AWS ligada.
+[`v0.4.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0) acrescenta eventos ao
+monólito, com outbox transacional, Kafka local, auditoria deduplicada e tratamento operacional de
+falhas, sem manter nova infraestrutura AWS ligada.
 
 ## Licença
 
