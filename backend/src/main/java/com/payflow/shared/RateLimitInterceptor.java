@@ -64,14 +64,26 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         if (!"POST".equals(request.getMethod())) {
             return null;
         }
-        return switch (request.getRequestURI()) {
+        String uri = request.getRequestURI();
+        LimitTarget exactTarget = switch (uri) {
             case "/api/v1/auth/login" -> new LimitTarget("login:" + clientIp(request), loginLimit);
             case "/api/v1/auth/register" -> new LimitTarget("register:" + clientIp(request), registrationLimit);
-            case "/api/v1/transfers" -> authenticatedUser(request)
-                    .map(subject -> new LimitTarget("transfer:" + subject, transferLimit))
-                    .orElse(null);
+            case "/api/v1/transfers" -> transferTarget(request);
             default -> null;
         };
+        if (exactTarget != null) {
+            return exactTarget;
+        }
+        if (uri.startsWith("/api/v1/transfers/") && uri.endsWith("/reversals")) {
+            return transferTarget(request);
+        }
+        return null;
+    }
+
+    private LimitTarget transferTarget(HttpServletRequest request) {
+        return authenticatedUser(request)
+                .map(subject -> new LimitTarget("transfer:" + subject, transferLimit))
+                .orElse(null);
     }
 
     private java.util.Optional<String> authenticatedUser(HttpServletRequest request) {
