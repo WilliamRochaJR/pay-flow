@@ -27,7 +27,7 @@ class AuditEventRepository {
         return inserted == 1;
     }
 
-    void record(TransferEventV1 event, String payload) {
+    void store(TransferEventV1 event, String payload) {
         jdbcTemplate.update("""
                 INSERT INTO audit_events (
                     event_id, transfer_id, original_transfer_id, event_type, event_version,

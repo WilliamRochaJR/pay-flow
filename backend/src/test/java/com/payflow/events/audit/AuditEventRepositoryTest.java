@@ -49,7 +49,7 @@ class AuditEventRepositoryTest {
     void storesTheOriginalPayloadWithItsSearchableIdentifiers() {
         TransferEventV1 event = event();
 
-        new AuditEventRepository(jdbcTemplate).record(event, "payload");
+        new AuditEventRepository(jdbcTemplate).store(event, "payload");
 
         verify(jdbcTemplate).update(
                 anyString(),
@@ -73,7 +73,7 @@ class AuditEventRepositoryTest {
                 originalTransferId, UUID.randomUUID(), UUID.randomUUID(), "25.00", "BRL"
         );
 
-        new AuditEventRepository(jdbcTemplate).record(event, "payload");
+        new AuditEventRepository(jdbcTemplate).store(event, "payload");
 
         verify(jdbcTemplate).update(
                 anyString(),

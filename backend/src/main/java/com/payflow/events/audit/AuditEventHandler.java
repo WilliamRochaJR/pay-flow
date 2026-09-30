@@ -41,7 +41,7 @@ class AuditEventHandler {
                 metrics.auditProcessed(true);
                 return;
             }
-            repository.record(event, payload);
+            repository.store(event, payload);
             metrics.auditProcessed(false);
         }
     }
@@ -50,11 +50,10 @@ class AuditEventHandler {
         try {
             EventDescriptor descriptor = objectMapper.readValue(payload, EventDescriptor.class);
             validateDescriptor(descriptor);
-            return switch (descriptor.eventType()) {
-                case COMPLETED_EVENT_TYPE -> objectMapper.readValue(payload, TransferCompletedV1.class);
-                case REVERSED_EVENT_TYPE -> objectMapper.readValue(payload, TransferReversedV1.class);
-                default -> throw new IllegalArgumentException("Unsupported transfer event contract.");
-            };
+            if (COMPLETED_EVENT_TYPE.equals(descriptor.eventType())) {
+                return objectMapper.readValue(payload, TransferCompletedV1.class);
+            }
+            return objectMapper.readValue(payload, TransferReversedV1.class);
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Invalid transfer event payload.", exception);
         }
