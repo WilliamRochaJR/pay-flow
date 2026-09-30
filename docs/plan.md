@@ -118,6 +118,7 @@ Critério de promoção: o consumidor possui ciclo de vida, escala ou disponibil
 
 ## M5 — capacidades avançadas opcionais
 
+- **M5.1 — estorno imutável:** planejado pelo ADR-0025 em quatro incrementos demonstráveis;
 - Notification Service consumindo eventos;
 - WebFlux para streaming de eventos/SSE ou integração externa altamente concorrente;
 - RDS, múltiplas zonas e serviços AWS gerenciados conforme custo e objetivo;
@@ -125,6 +126,16 @@ Critério de promoção: o consumidor possui ciclo de vida, escala ou disponibil
 - análise de fraude, limites por usuário e estornos.
 
 Esses itens não são requisitos para declarar o portfólio pronto.
+
+### M5.1 — estorno imutável
+
+- [ ] M5.1.1: criar domínio, persistência e endpoint idempotente de estorno integral;
+- [ ] M5.1.2: publicar `TransferReversed.v1` e projetá-lo na auditoria;
+- [ ] M5.1.3: permitir estorno no front-end com confirmação e feedback;
+- [ ] M5.1.4: cobrir o fluxo E2E, métricas e documentação de release.
+
+Critério de aceite: o usuário compensa uma transferência própria sem alterar ou apagar a operação
+original, e repetição ou concorrência não movimenta o saldo mais de uma vez.
 
 ## Backlog inicial em ordem
 
