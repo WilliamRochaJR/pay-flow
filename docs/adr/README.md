@@ -28,3 +28,4 @@ Formato de status: `Proposto`, `Aceito`, `Substituído` ou `Rejeitado`.
 - [ADR-0022 — Métricas internas e alarmes efêmeros](0022-metrics-and-ephemeral-alarms.md)
 - [ADR-0023 — Outbox transacional antes do Kafka](0023-transactional-outbox-before-kafka.md)
 - [ADR-0024 — Adiar a extração do Audit Service](0024-defer-audit-service-extraction.md)
+- [ADR-0025 — Estorno como nova transferência imutável](0025-reversal-as-new-immutable-transfer.md)

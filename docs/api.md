@@ -159,4 +159,19 @@ exceder o limite, a API retorna `429 Too Many Requests`, um `ProblemDetail` com 
 header `Retry-After`, indicando quantos segundos aguardar. Os limites são uma proteção operacional e
 não alteram as regras de autorização.
 
-Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro histórico; estorno será um novo caso de uso futuro.
+Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro
+histórico; o ADR-0025 define o estorno como uma nova operação vinculada à original.
+
+## Próxima evolução: estorno integral
+
+O ADR-0025 planeja o contrato abaixo para o M5.1:
+
+```http
+POST /api/v1/transfers/{transferId}/reversals
+Authorization: Bearer <token>
+Idempotency-Key: <uuid>
+```
+
+O endpoint não recebe corpo. Ele cria uma nova transferência `REVERSAL`, com contas invertidas e o
+mesmo valor e moeda da original. A transferência original permanece imutável. Até o M5.1.1 ser
+implementado, este endpoint é apenas um contrato planejado e ainda responde como rota inexistente.
