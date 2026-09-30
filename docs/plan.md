@@ -106,6 +106,9 @@ Critério de promoção: o fluxo síncrono está estável e existe necessidade d
 
 ## M4 — extração do Audit Service
 
+Status: adiado pelo ADR-0024. O critério de promoção ainda não foi observado; a auditoria permanece
+como módulo isolado do monólito e será reavaliada por gatilhos mensuráveis.
+
 - extrair apenas o consumidor de auditoria;
 - MongoDB como projeção de histórico de eventos, não como fonte do saldo;
 - deploy e pipeline independentes;
