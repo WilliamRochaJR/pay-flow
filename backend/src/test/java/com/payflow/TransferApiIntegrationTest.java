@@ -404,6 +404,19 @@ class TransferApiIntegrationTest {
                 .andExpect(jsonPath("$.detail").value("Um estorno não pode ser estornado."));
         mvc.perform(get("/api/v1/transfers").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.completed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.replayed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.rejected")
+                        .queryParam("tag", "reason:reversal-already-exists"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.duration"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableTags[?(@.tag == 'outcome')]").exists());
     }
 
     @Test
@@ -577,6 +590,14 @@ class TransferApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'X-Correlation-ID')]")
                         .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['201']")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['409']")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['409']"
+                        + ".content['application/problem+json'].schema").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['422']")
+                        .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/me'].get.security[0].bearerAuth").exists());
 
         mvc.perform(get("/swagger-ui.html"))

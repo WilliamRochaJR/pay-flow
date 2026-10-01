@@ -41,6 +41,30 @@ public class TransferMetrics {
                 .record(Duration.ofNanos(System.nanoTime() - startedAtNanos));
     }
 
+    void reversalCompletedAfterCommit() {
+        afterCommit(() -> registry.counter("payflow.reversals.completed").increment());
+    }
+
+    void reversalReplayedAfterCommit() {
+        afterCommit(() -> registry.counter("payflow.reversals.replayed").increment());
+    }
+
+    void reversalRejected(String reason) {
+        registry.counter("payflow.reversals.rejected", "reason", reason).increment();
+    }
+
+    void reversalFailed() {
+        registry.counter("payflow.reversals.failed").increment();
+    }
+
+    void recordReversalDuration(long startedAtNanos, String outcome) {
+        Timer.builder("payflow.reversals.duration")
+                .description("Duration of transfer reversal attempts")
+                .tag("outcome", outcome)
+                .register(registry)
+                .record(Duration.ofNanos(System.nanoTime() - startedAtNanos));
+    }
+
     private void afterCommit(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             action.run();
