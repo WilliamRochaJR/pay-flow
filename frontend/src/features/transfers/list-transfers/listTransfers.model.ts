@@ -1,6 +1,7 @@
 export type Transfer = {
   id: string
-  type: 'INTERNAL_TRANSFER'
+  type: 'INTERNAL_TRANSFER' | 'REVERSAL'
+  originalTransferId: string | null
   sourceAccountId: string
   destinationAccountId: string
   amount: number

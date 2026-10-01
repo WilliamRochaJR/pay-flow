@@ -3,6 +3,7 @@ import type { Account } from '../../../accounts/list-accounts/listAccounts.model
 import { formatCurrency } from '../../../../shared/formatters/currency'
 import { formatDateTime } from '../../../../shared/formatters/dateTime'
 import type { TransferFilters, TransferPage } from '../listTransfers.model'
+import { ReverseTransferAction } from '../../reverse-transfer/components/ReverseTransferAction'
 
 type TransferHistoryProps = {
   accounts: Account[]
@@ -10,6 +11,8 @@ type TransferHistoryProps = {
   filters: TransferFilters
   onFilter: (filters: TransferFilters) => void
   onPageChange: (page: number) => void
+  reversingTransferId: string
+  onReverse: (transferId: string) => Promise<boolean>
 }
 
 export function TransferHistory({
@@ -18,12 +21,18 @@ export function TransferHistory({
   filters,
   onFilter,
   onPageChange,
+  reversingTransferId,
+  onReverse,
 }: TransferHistoryProps) {
   const [from, setFrom] = useState(filters.from ?? '')
   const [to, setTo] = useState(filters.to ?? '')
   const accountNames = useMemo(
     () => new Map(accounts.map((account) => [account.id, account.holderName])),
     [accounts],
+  )
+  const reversedTransferIds = useMemo(
+    () => new Set(transfers.content.flatMap((transfer) => transfer.originalTransferId ?? [])),
+    [transfers.content],
   )
 
   useEffect(() => {
@@ -95,7 +104,14 @@ export function TransferHistory({
               </div>
               <div className="transfer-amount">
                 <strong>{formatCurrency(transfer.amount)}</strong>
-                <span>Concluída</span>
+                <span>{transfer.type === 'REVERSAL' ? 'Estorno concluído' : 'Concluída'}</span>
+                {transfer.type === 'INTERNAL_TRANSFER' && !reversedTransferIds.has(transfer.id) && (
+                  <ReverseTransferAction
+                    transfer={transfer}
+                    submitting={reversingTransferId === transfer.id}
+                    onConfirm={onReverse}
+                  />
+                )}
               </div>
             </article>
           ))}
