@@ -2,10 +2,15 @@ package com.payflow.transfers;
 
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +43,47 @@ public class TransferController {
 
     public TransferController(TransferService service) {
         this.service = service;
+    }
+
+    @PostMapping("/{id}/reversals")
+    @Operation(summary = "Estornar integralmente uma transferência")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Estorno criado ou repetição idempotente",
+                    content = @Content(schema = @Schema(implementation = TransferResponse.class))),
+            @ApiResponse(responseCode = "400", description = "A operação informada é um estorno",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Transferência não encontrada para o usuário",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Transferência já estornada ou chave conflitante",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "422", description = "Saldo insuficiente para compensar a operação",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<TransferResponse> reverse(
+            @PathVariable UUID id,
+            @Parameter(description = "UUID único da tentativa", required = true)
+            @RequestHeader("Idempotency-Key") UUID idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE_NAME) String correlationId,
+            @AuthenticationPrincipal Jwt jwt) {
+        TransferResponse response = service.reverse(
+                id,
+                UUID.fromString(jwt.getSubject()),
+                idempotencyKey,
+                correlationId
+        );
+        var location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/api/v1/transfers/{id}")
+                .buildAndExpand(response.id())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
     }
 
     @PostMapping

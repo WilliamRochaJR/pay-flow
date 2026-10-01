@@ -14,5 +14,5 @@ public record TransferCompletedV1(
         UUID destinationAccountId,
         String amount,
         String currency
-) {
+) implements TransferEventV1 {
 }

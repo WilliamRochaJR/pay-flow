@@ -1,6 +1,8 @@
 package com.payflow.events.audit;
 
 import com.payflow.events.outbox.TransferCompletedV1;
+import com.payflow.events.outbox.TransferEventV1;
+import com.payflow.events.outbox.TransferReversedV1;
 import com.payflow.events.EventMetrics;
 import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,7 +15,8 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnProperty(name = "app.events.audit.enabled", havingValue = "true")
 class AuditEventHandler {
 
-    private static final String SUPPORTED_EVENT_TYPE = "TransferCompleted";
+    private static final String COMPLETED_EVENT_TYPE = "TransferCompleted";
+    private static final String REVERSED_EVENT_TYPE = "TransferReversed";
     private static final int SUPPORTED_EVENT_VERSION = 1;
 
     private final AuditEventRepository repository;
@@ -31,29 +34,58 @@ class AuditEventHandler {
 
     @Transactional
     public void handle(String payload) {
-        TransferCompletedV1 event = deserialize(payload);
+        TransferEventV1 event = deserialize(payload);
         validateContract(event);
         try (MDC.MDCCloseable ignored = MDC.putCloseable("correlationId", event.correlationId().toString())) {
             if (!repository.claim(consumerName, event.eventId())) {
                 metrics.auditProcessed(true);
                 return;
             }
-            repository.record(event, payload);
+            repository.store(event, payload);
             metrics.auditProcessed(false);
         }
     }
 
-    private TransferCompletedV1 deserialize(String payload) {
+    private TransferEventV1 deserialize(String payload) {
         try {
-            return objectMapper.readValue(payload, TransferCompletedV1.class);
+            EventDescriptor descriptor = objectMapper.readValue(payload, EventDescriptor.class);
+            validateDescriptor(descriptor);
+            if (COMPLETED_EVENT_TYPE.equals(descriptor.eventType())) {
+                return objectMapper.readValue(payload, TransferCompletedV1.class);
+            }
+            return objectMapper.readValue(payload, TransferReversedV1.class);
         } catch (JacksonException exception) {
-            throw new IllegalArgumentException("Invalid TransferCompleted.v1 payload.", exception);
+            throw new IllegalArgumentException("Invalid transfer event payload.", exception);
         }
     }
 
-    private void validateContract(TransferCompletedV1 event) {
-        if (!SUPPORTED_EVENT_TYPE.equals(event.eventType()) || event.eventVersion() != SUPPORTED_EVENT_VERSION) {
+    private void validateDescriptor(EventDescriptor descriptor) {
+        if (descriptor == null
+                || descriptor.eventVersion() != SUPPORTED_EVENT_VERSION
+                || (!COMPLETED_EVENT_TYPE.equals(descriptor.eventType())
+                && !REVERSED_EVENT_TYPE.equals(descriptor.eventType()))) {
             throw new IllegalArgumentException("Unsupported transfer event contract.");
         }
+    }
+
+    private void validateContract(TransferEventV1 event) {
+        if (event.eventId() == null || event.occurredAt() == null || event.correlationId() == null
+                || event.transferId() == null) {
+            throw new IllegalArgumentException("Invalid transfer event contract.");
+        }
+        if (event instanceof TransferCompletedV1 completed
+                && (completed.sourceAccountId() == null || completed.destinationAccountId() == null
+                || completed.amount() == null || completed.currency() == null)) {
+            throw new IllegalArgumentException("Invalid transfer event contract.");
+        }
+        if (event instanceof TransferReversedV1 reversed
+                && (reversed.originalTransferId() == null || reversed.sourceAccountId() == null
+                || reversed.destinationAccountId() == null || reversed.amount() == null
+                || reversed.currency() == null)) {
+            throw new IllegalArgumentException("Invalid transfer event contract.");
+        }
+    }
+
+    public record EventDescriptor(String eventType, int eventVersion) {
     }
 }

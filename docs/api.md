@@ -159,4 +159,50 @@ exceder o limite, a API retorna `429 Too Many Requests`, um `ProblemDetail` com 
 header `Retry-After`, indicando quantos segundos aguardar. Os limites são uma proteção operacional e
 não alteram as regras de autorização.
 
-Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro histórico; estorno será um novo caso de uso futuro.
+Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro
+histórico; o ADR-0025 define o estorno como uma nova operação vinculada à original.
+
+## Estorno integral — M5.1
+
+O ADR-0025 define o contrato:
+
+```http
+POST /api/v1/transfers/{transferId}/reversals
+Authorization: Bearer <token>
+Idempotency-Key: <uuid>
+```
+
+O endpoint não recebe corpo. Ele cria uma nova transferência `REVERSAL`, com contas invertidas e o
+mesmo valor e moeda da original. A transferência original permanece imutável. Nesta primeira etapa,
+o estorno é permitido somente quando as duas contas continuam pertencendo ao usuário autenticado.
+
+A primeira tentativa retorna `201 Created`. Repetir a mesma `Idempotency-Key` devolve o mesmo estorno
+sem movimentar os saldos novamente. Uma chave diferente para uma transferência já estornada retorna
+`409 Conflict`. Saldo insuficiente na conta que devolveria o valor retorna `422 Unprocessable Entity`.
+
+A resposta usa `type: "REVERSAL"` e informa `originalTransferId`. Transferências comuns usam
+`type: "INTERNAL_TRANSFER"` e não possuem vínculo de origem.
+
+Exemplo de resposta:
+
+```json
+{
+  "id": "47bfd5bf-61c8-4559-97d6-b143779b762c",
+  "type": "REVERSAL",
+  "originalTransferId": "7e2cb1ed-c44f-4cb2-9495-b1ca81042c5a",
+  "sourceAccountId": "565620a5-e66d-48c9-8ff2-39aa22ace194",
+  "destinationAccountId": "5b99802c-24c0-4462-8260-6317a984da20",
+  "amount": 350.0,
+  "currency": "BRL",
+  "status": "COMPLETED",
+  "createdAt": "2026-10-01T16:00:00Z"
+}
+```
+
+O OpenAPI declara explicitamente as respostas `201`, `400`, `401`, `404`, `409` e `422` desse
+endpoint. O Swagger UI permite autenticar com JWT e experimentar o contrato localmente.
+
+Na mesma transação que conclui o estorno, a outbox grava `TransferReversed.v1`. O contrato inclui
+`eventId`, `eventType`, `eventVersion`, `occurredAt`, `correlationId`, `transferId`,
+`originalTransferId`, contas, valor e moeda. O relay publica transferências e estornos no tópico local
+`payflow.transfer-events.v1`; o consumidor os deduplica e preserva a projeção em `audit_events`.

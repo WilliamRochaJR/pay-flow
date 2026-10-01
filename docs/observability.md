@@ -24,13 +24,20 @@ Consulte uma métrica específica:
 curl http://localhost:8080/actuator/metrics/payflow.transfers.completed
 curl 'http://localhost:8080/actuator/metrics/payflow.transfers.rejected?tag=reason:insufficient-balance'
 curl http://localhost:8080/actuator/metrics/payflow.transfers.duration
+curl http://localhost:8080/actuator/metrics/payflow.reversals.completed
+curl 'http://localhost:8080/actuator/metrics/payflow.reversals.rejected?tag=reason:reversal-already-exists'
+curl http://localhost:8080/actuator/metrics/payflow.reversals.duration
 ```
+
+As métricas específicas de estorno usam o prefixo `payflow.reversals` e distinguem operações
+`completed`, `replayed`, `rejected` e `failed`. O timer aceita somente os resultados `completed`,
+`replayed`, `rejected` e `failed`; rejeições usam apenas códigos de negócio conhecidos em `reason`.
 
 As métricas existem somente na memória do processo. Reiniciar a API zera os contadores. Isso é
 adequado ao ambiente efêmero inicial; retenção histórica exigirá um coletor externo no futuro.
 
 IDs não são usados como tags. `reason` e `outcome` possuem conjuntos pequenos e controlados para
-evitar alta cardinalidade.
+evitar alta cardinalidade. Os contadores de conclusão e repetição só avançam depois do commit.
 
 ## Métricas de eventos
 

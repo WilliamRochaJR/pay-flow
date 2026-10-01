@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('completes a transfer through the published application', async ({ page }) => {
+test('completes and reverses a transfer through the published application', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL(/\/login$/)
 
@@ -44,4 +44,23 @@ test('completes a transfer through the published application', async ({ page }) 
 
   await expect(page.getByRole('status')).toHaveText('Transferência concluída com sucesso.')
   await expect(page.getByText(/E2E User • Principal → E2E User • Reserva/).first()).toBeVisible()
+
+  const reversalResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/transfers/') &&
+      response.url().endsWith('/reversals') &&
+      response.request().method() === 'POST' &&
+      response.status() === 201,
+  )
+
+  await page.getByRole('button', { name: 'Estornar' }).click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'A transferência original continuará no histórico.',
+  )
+  await page.getByRole('button', { name: 'Confirmar estorno' }).click()
+  await reversalResponse
+
+  await expect(page.getByRole('status')).toHaveText('Transferência estornada com sucesso.')
+  await expect(page.getByText('Estorno concluído')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Estornar' })).toHaveCount(0)
 })

@@ -23,6 +23,7 @@ describe('TransferHistory', () => {
             {
               id: 'transfer-1',
               type: 'INTERNAL_TRANSFER',
+              originalTransferId: null,
               sourceAccountId: 'account-1',
               destinationAccountId: 'account-2',
               amount: 50,
@@ -41,6 +42,8 @@ describe('TransferHistory', () => {
         filters={{}}
         onFilter={onFilter}
         onPageChange={onPageChange}
+        reversingTransferId=""
+        onReverse={async () => true}
       />,
     )
 

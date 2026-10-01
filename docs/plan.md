@@ -86,9 +86,12 @@ do TTL. Uma incompatibilidade entre o comando de remoção do parâmetro SSM e a
 detectada na primeira limpeza de homologação, corrigida antes da tag e validada com sucesso na limpeza
 de produção. O resultado de `main` foi sincronizado de volta para `develop` pelo PR #52.
 
-## M3 — eventos sem microserviços
+## M3 — eventos sem microserviços ✅
 
-Status: implementação concluída na candidata `v0.4.0`; aguarda estabilização, homologação e promoção.
+Status: concluído com a publicação da versão `v0.4.0` em 2026-09-29. A candidata foi validada em
+`homologation`; a mesma revisão foi integrada em `main`, identificada pela tag anotada `v0.4.0` e
+promovida para `production`. Os dois ambientes foram destruídos automaticamente ao final do TTL, e
+o resultado de `main` foi sincronizado de volta para `develop` pelo PR #61.
 
 - [x] revisar e aceitar o ADR-0023 antes de alterar o runtime;
 - [x] M3.1: gravar `TransferCompleted.v1` em `outbox_events` na mesma transação da transferência;
@@ -96,11 +99,15 @@ Status: implementação concluída na candidata `v0.4.0`; aguarda estabilizaçã
 - [x] M3.3: consumir o evento em um módulo de auditoria ainda dentro do monólito, com deduplicação;
 - [x] M3.4: adicionar retries, dead-letter topic, retenção, métricas e rastreabilidade por correlation
       ID;
-- [ ] decidir Kafka em cloud em ADR separado somente após medir custo e necessidade operacional.
+- Kafka em cloud permanece adiado: uma futura adoção exige necessidade operacional mensurável e um
+  ADR separado.
 
 Critério de promoção: o fluxo síncrono está estável e existe necessidade demonstrável de executar efeitos secundários sem aumentar a latência da transferência.
 
 ## M4 — extração do Audit Service
+
+Status: adiado pelo ADR-0024. O critério de promoção ainda não foi observado; a auditoria permanece
+como módulo isolado do monólito e será reavaliada por gatilhos mensuráveis.
 
 - extrair apenas o consumidor de auditoria;
 - MongoDB como projeção de histórico de eventos, não como fonte do saldo;
@@ -111,6 +118,7 @@ Critério de promoção: o consumidor possui ciclo de vida, escala ou disponibil
 
 ## M5 — capacidades avançadas opcionais
 
+- **M5.1 — estorno imutável:** planejado pelo ADR-0025 em quatro incrementos demonstráveis;
 - Notification Service consumindo eventos;
 - WebFlux para streaming de eventos/SSE ou integração externa altamente concorrente;
 - RDS, múltiplas zonas e serviços AWS gerenciados conforme custo e objetivo;
@@ -118,6 +126,16 @@ Critério de promoção: o consumidor possui ciclo de vida, escala ou disponibil
 - análise de fraude, limites por usuário e estornos.
 
 Esses itens não são requisitos para declarar o portfólio pronto.
+
+### M5.1 — estorno imutável
+
+- [x] M5.1.1: criar domínio, persistência e endpoint idempotente de estorno integral;
+- [x] M5.1.2: publicar `TransferReversed.v1` e projetá-lo na auditoria;
+- [x] M5.1.3: permitir estorno no front-end com confirmação e feedback;
+- [x] M5.1.4: cobrir o fluxo E2E, métricas e documentação de release.
+
+Critério de aceite: o usuário compensa uma transferência própria sem alterar ou apagar a operação
+original, e repetição ou concorrência não movimenta o saldo mais de uma vez.
 
 ## Backlog inicial em ordem
 
@@ -132,10 +150,13 @@ Esses itens não são requisitos para declarar o portfólio pronto.
 
 ## Definição de pronto do portfólio
 
-- URL pública funcional; HTTPS quando houver um domínio validável;
-- repositório com README, diagrama, ADRs e instruções de execução;
-- dados exclusivamente fictícios;
-- pipeline verde;
-- demonstração gravada ou screenshots;
-- decisões e trade-offs explicáveis em entrevista;
-- custo mensal e procedimento de desligamento documentados.
+- [x] fluxo validado em URL pública efêmera; HTTPS permanece condicionado a um domínio validável;
+- [x] repositório com README, diagrama, ADRs e instruções de execução;
+- [x] dados exclusivamente fictícios;
+- [x] pipeline verde;
+- [x] screenshots reproduzíveis da aplicação;
+- [x] decisões e trade-offs explicáveis em entrevista;
+- [x] controle de custo mensal e procedimento de desligamento documentados.
+
+As evidências e limitações estão consolidadas em
+[`portfolio-readiness.md`](portfolio-readiness.md).

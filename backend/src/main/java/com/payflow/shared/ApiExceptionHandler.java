@@ -18,7 +18,8 @@ public class ApiExceptionHandler {
     ProblemDetail handleBusiness(BusinessException exception, HttpServletRequest request) {
         HttpStatus status = switch (exception.getCode()) {
             case "insufficient-balance" -> HttpStatus.UNPROCESSABLE_CONTENT;
-            case "email-already-registered", "idempotency-conflict" -> HttpStatus.CONFLICT;
+            case "email-already-registered", "idempotency-conflict", "reversal-already-exists" ->
+                HttpStatus.CONFLICT;
             case "invalid-credentials" -> HttpStatus.UNAUTHORIZED;
             default -> HttpStatus.BAD_REQUEST;
         };

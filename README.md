@@ -14,7 +14,9 @@ A primeira versão pública será um **monólito modular**, executado com Docker
 
 O primeiro fluxo vertical já inclui contas fictícias, transferência atômica, atualização de saldos e histórico.
 
-O fluxo inclui cadastro e login no React, senha protegida por BCrypt, autenticação JWT e contas isoladas por usuário. O token permanece somente em memória e é descartado ao sair ou atualizar a página.
+O fluxo inclui cadastro e login no React, senha protegida por BCrypt, autenticação JWT e contas
+isoladas por usuário. O token fica no `sessionStorage`: sobrevive à atualização da página na mesma aba
+e é descartado ao sair ou ao encerrar a sessão do navegador.
 
 ### Executar tudo com Docker
 
@@ -37,15 +39,15 @@ Compose base com o arquivo opcional:
 docker compose -f compose.yaml -f compose.events.yaml up --build --wait
 ```
 
-Nesse modo, a API publica `TransferCompleted.v1` no tópico
-`payflow.transfer-completed.v1` e o módulo de auditoria consome cada evento uma única vez do ponto de
+Nesse modo, a API publica `TransferCompleted.v1` e `TransferReversed.v1` no tópico
+`payflow.transfer-events.v1`, e o módulo de auditoria consome cada evento uma única vez do ponto de
 vista do efeito persistido. Para visualizar os eventos:
 
 ```bash
 docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
-  --topic payflow.transfer-completed.v1 \
+  --topic payflow.transfer-events.v1 \
   --from-beginning
 ```
 
@@ -55,7 +57,7 @@ Mensagens que continuam falhando após duas retentativas são preservadas no tó
 docker compose -f compose.yaml -f compose.events.yaml exec kafka \
   /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
-  --topic payflow.transfer-completed.v1.DLT \
+  --topic payflow.transfer-events.v1.DLT \
   --from-beginning
 ```
 
@@ -67,7 +69,7 @@ Para conferir as projeções de auditoria e os eventos já processados:
 ```bash
 docker compose -f compose.yaml -f compose.events.yaml exec db \
   psql -U payflow -d payflow -c \
-  'SELECT event_id, transfer_id, event_type, occurred_at FROM audit_events;'
+  'SELECT event_id, transfer_id, original_transfer_id, event_type, occurred_at FROM audit_events;'
 
 docker compose -f compose.yaml -f compose.events.yaml exec db \
   psql -U payflow -d payflow -c \
@@ -106,16 +108,25 @@ npm run check:e2e
 
 `check` executa formatação, tipos, lint, cobertura, testes e builds do front e `mvn verify` no back. `check:e2e` reconstrói a aplicação completa e executa o fluxo Playwright. Os testes de integração e E2E precisam do Docker ativo.
 
-## Primeiro produto publicável
+## Produto publicável
 
-O usuário poderá:
+O usuário pode:
 
 1. criar uma conta e entrar;
 2. consultar saldo e histórico;
 3. transferir um valor entre duas contas de demonstração;
-4. consultar o resultado da transferência.
+4. estornar integralmente uma transferência com confirmação explícita;
+5. consultar a operação original e sua compensação no histórico.
 
 O release público inclui autenticação JWT, validação de saldo, transferência atômica e uma interface responsiva. Não movimenta dinheiro real e será identificado como ambiente de demonstração.
+
+## Demonstração visual
+
+![Dashboard do PayFlow após uma transferência](docs/assets/portfolio/dashboard.png)
+
+As capturas são geradas a partir da aplicação real, com dados exclusivamente fictícios. Consulte a
+[avaliação de prontidão do portfólio](docs/portfolio-readiness.md) para ver as evidências e limitações
+da demonstração.
 
 ## Documentação
 
@@ -127,6 +138,7 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 - [Processo de release](docs/releases/README.md)
 - [Ambientes e promoção](docs/environments.md)
 - [Observabilidade](docs/observability.md)
+- [Prontidão do portfólio](docs/portfolio-readiness.md)
 - [Decisões arquiteturais](docs/adr/README.md)
 - [Infraestrutura AWS com Terraform](infra/README.md)
 - [Runtime de produção com Compose e Caddy](deploy/README.md)
@@ -134,9 +146,9 @@ O release público inclui autenticação JWT, validação de saldo, transferênc
 ## Estado
 
 M0, M1, M2 e M3 estão concluídos. A versão
-[`v0.3.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0) formaliza a base confiável
-publicada. A candidata `v0.4.0` acrescenta eventos no monólito, com outbox transacional, Kafka local,
-auditoria deduplicada e tratamento operacional de falhas, sem manter nova infraestrutura AWS ligada.
+[`v0.4.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0) acrescenta eventos ao
+monólito, com outbox transacional, Kafka local, auditoria deduplicada e tratamento operacional de
+falhas, sem manter nova infraestrutura AWS ligada.
 
 ## Licença
 

@@ -38,6 +38,77 @@ public class TransferService {
     }
 
     @Transactional
+    public TransferResponse reverse(UUID originalTransferId, UUID ownerId, UUID idempotencyKey,
+                                    String correlationId) {
+        long startedAtNanos = System.nanoTime();
+        String outcome = "failed";
+        try {
+            lockIdempotencyKey(ownerId, idempotencyKey);
+            var previous = transferRepository.findByOwnerIdAndIdempotencyKey(ownerId, idempotencyKey);
+            if (previous.isPresent()) {
+                Transfer transfer = previous.get();
+                if (transfer.getType() == TransferType.REVERSAL
+                        && originalTransferId.equals(transfer.getOriginalTransferId())) {
+                    outcome = "replayed";
+                    metrics.replayedAfterCommit();
+                    metrics.reversalReplayedAfterCommit();
+                    return TransferResponse.from(transfer);
+                }
+                throw new BusinessException("idempotency-conflict",
+                        "A Idempotency-Key já foi utilizada com dados diferentes.");
+            }
+
+            Transfer original = transferRepository.findOwnedByIdForUpdate(originalTransferId, ownerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Transferência não encontrada."));
+            if (original.getType() != TransferType.INTERNAL_TRANSFER) {
+                throw new BusinessException("reversal-not-allowed", "Um estorno não pode ser estornado.");
+            }
+            if (transferRepository.findByOriginalTransferId(originalTransferId).isPresent()) {
+                throw new BusinessException("reversal-already-exists", "A transferência já possui um estorno.");
+            }
+
+            List<Account> lockedAccounts = accountRepository.findAllForUpdate(
+                    List.of(original.getSourceAccountId(), original.getDestinationAccountId())
+            );
+            if (lockedAccounts.size() != 2) {
+                throw new ResourceNotFoundException("Conta de origem ou destino não encontrada.");
+            }
+            Map<UUID, Account> byId = lockedAccounts.stream()
+                    .collect(Collectors.toMap(Account::getId, Function.identity()));
+            Account originalSource = byId.get(original.getSourceAccountId());
+            Account originalDestination = byId.get(original.getDestinationAccountId());
+            if (!originalSource.getOwnerId().equals(ownerId) || !originalDestination.getOwnerId().equals(ownerId)) {
+                throw new ResourceNotFoundException("Transferência não encontrada.");
+            }
+
+            originalDestination.debit(original.getAmount());
+            originalSource.credit(original.getAmount());
+            Transfer reversal = transferRepository.save(Transfer.reversalOf(original, ownerId, idempotencyKey));
+            eventRecorder.recordReversed(reversal, correlationId);
+            outcome = "completed";
+            metrics.completedAfterCommit();
+            metrics.reversalCompletedAfterCommit();
+            return TransferResponse.from(reversal);
+        } catch (BusinessException exception) {
+            outcome = "rejected";
+            metrics.rejected(exception.getCode());
+            metrics.reversalRejected(exception.getCode());
+            throw exception;
+        } catch (ResourceNotFoundException exception) {
+            outcome = "rejected";
+            metrics.rejected("not-found");
+            metrics.reversalRejected("not-found");
+            throw exception;
+        } catch (RuntimeException exception) {
+            metrics.failed();
+            metrics.reversalFailed();
+            throw exception;
+        } finally {
+            metrics.recordReversalDuration(startedAtNanos, outcome);
+        }
+    }
+
+    @Transactional
     public TransferResponse create(CreateTransferRequest request, UUID ownerId, UUID idempotencyKey,
                                    String correlationId) {
         long startedAtNanos = System.nanoTime();

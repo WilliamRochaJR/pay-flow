@@ -1,6 +1,8 @@
 package com.payflow.events.audit;
 
 import com.payflow.events.outbox.TransferCompletedV1;
+import com.payflow.events.outbox.TransferEventV1;
+import com.payflow.events.outbox.TransferReversedV1;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -45,14 +47,39 @@ class AuditEventRepositoryTest {
 
     @Test
     void storesTheOriginalPayloadWithItsSearchableIdentifiers() {
-        TransferCompletedV1 event = event();
+        TransferEventV1 event = event();
 
-        new AuditEventRepository(jdbcTemplate).record(event, "payload");
+        new AuditEventRepository(jdbcTemplate).store(event, "payload");
 
         verify(jdbcTemplate).update(
                 anyString(),
                 eq(event.eventId()),
                 eq(event.transferId()),
+                org.mockito.ArgumentMatchers.isNull(),
+                eq(event.eventType()),
+                eq(event.eventVersion()),
+                any(),
+                eq(event.correlationId()),
+                eq("payload"),
+                any()
+        );
+    }
+
+    @Test
+    void storesTheOriginalTransferIdForAReversal() {
+        UUID originalTransferId = UUID.randomUUID();
+        TransferReversedV1 event = new TransferReversedV1(
+                UUID.randomUUID(), "TransferReversed", 1, Instant.now(), UUID.randomUUID(), UUID.randomUUID(),
+                originalTransferId, UUID.randomUUID(), UUID.randomUUID(), "25.00", "BRL"
+        );
+
+        new AuditEventRepository(jdbcTemplate).store(event, "payload");
+
+        verify(jdbcTemplate).update(
+                anyString(),
+                eq(event.eventId()),
+                eq(event.transferId()),
+                eq(originalTransferId),
                 eq(event.eventType()),
                 eq(event.eventVersion()),
                 any(),

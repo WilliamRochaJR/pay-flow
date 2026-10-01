@@ -4,6 +4,31 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.5.0] - 2026-10-01
+
+### Adicionado
+
+- fluxo de estorno no dashboard com confirmação explícita, proteção contra envio duplicado e
+  feedback de sucesso ou erro;
+- endpoint idempotente para estorno integral de transferências entre contas do mesmo usuário;
+- tipo `REVERSAL` vinculado à transferência original, sem alterar o registro concluído;
+- migration com constraints e índice único para impedir vínculos inválidos e estorno duplicado;
+- testes com PostgreSQL real para saldo, autorização, idempotência e concorrência do estorno;
+- evento `TransferReversed.v1` gravado na outbox na mesma transação do estorno;
+- projeção de auditoria com `original_transfer_id` pesquisável para eventos de estorno;
+- métricas específicas e E2E do fluxo completo de criação e estorno;
+- contrato OpenAPI explícito e notas preparatórias da versão 0.5.0;
+
+### Segurança
+
+- estornos não podem debitar unilateralmente uma conta pertencente a outro usuário;
+- a rota de estorno compartilha o rate limit autenticado das transferências.
+
+### Alterado
+
+- o tópico Kafka local passa a se chamar `payflow.transfer-events.v1` para transportar contratos de
+  conclusão e estorno sem publicar eventos em um tópico semanticamente incorreto.
+
 ## [0.4.0] - 2026-09-29
 
 ### Adicionado
@@ -125,6 +150,7 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - a demonstração pública não movimenta dinheiro real;
 - os ambientes AWS permanecem desligados por padrão e são removidos depois do TTL.
 
+[0.5.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.5.0
 [0.4.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0
 [0.3.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.2.0

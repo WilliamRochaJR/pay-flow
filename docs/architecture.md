@@ -66,8 +66,9 @@ src/
 │   │   └── list-accounts/
 │   └── transfers/
 │       ├── create-transfer/
-│       └── list-transfers/
-└── shared/              cliente HTTP, formatadores e estilos globais
+│       ├── list-transfers/
+│       └── reverse-transfer/
+└── shared/              cliente HTTP, idempotência, formatadores e estilos globais
 ```
 
 O front-end é organizado por domínio e caso de uso. Cada caso pode conter modelo, service, coordenação, componentes internos e testes colocalizados. Código começa dentro da feature que o utiliza e só vai para `shared` quando for realmente transversal. Bibliotecas de cache, roteamento e estado global serão adicionadas apenas quando a aplicação apresentar essas necessidades.
@@ -112,7 +113,7 @@ React -> Transaction API -> PostgreSQL
 
 Kafka não participa da confirmação financeira. PostgreSQL continua sendo a fonte de verdade; a outbox impede o intervalo inconsistente entre salvar a transferência e publicar seu evento.
 
-## Eventos implementados no M3.4
+## Eventos implementados no M3.4 e no M5.1.2
 
 ```mermaid
 flowchart TD
@@ -121,7 +122,7 @@ flowchart TD
     Relay[OutboxRelay opcional] -->|FOR UPDATE SKIP LOCKED| Outbox
     Relay -->|chave: transferId| Kafka[Kafka local]
     Relay -->|após confirmação| Published[published_at]
-    Kafka -->|TransferCompleted.v1| Consumer[TransferAuditConsumer]
+    Kafka -->|TransferCompleted.v1 ou TransferReversed.v1| Consumer[TransferAuditConsumer]
     Consumer --> Handler[AuditEventHandler]
     Handler -->|claim por consumerName + eventId| Processed[(processed_events)]
     Handler -->|somente no primeiro processamento| Audit[(audit_events)]

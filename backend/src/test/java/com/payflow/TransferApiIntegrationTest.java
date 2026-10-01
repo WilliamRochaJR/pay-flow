@@ -333,6 +333,159 @@ class TransferApiIntegrationTest {
     }
 
     @Test
+    void reversesTransferWithoutChangingTheOriginalAndReplaysTheSameKey() throws Exception {
+        String token = registerAndLogin("reversal@example.com", "Reversal User");
+        java.util.List<String> accounts = accountIds(token);
+        UUID originalId = createTransfer(token, accounts.get(0), accounts.get(1), "350.00", UUID.randomUUID());
+        UUID reversalKey = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
+
+        MvcResult firstResult = mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", reversalKey)
+                        .header("X-Correlation-ID", correlationId))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andReturn();
+        String firstResponse = firstResult.getResponse().getContentAsString();
+
+        String reversalId = JsonPath.read(firstResponse, "$.id");
+        org.assertj.core.api.Assertions.assertThat(firstResult.getResponse().getHeader("Location"))
+                .endsWith("/api/v1/transfers/" + reversalId);
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(firstResponse, "$.type"))
+                .isEqualTo("REVERSAL");
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(firstResponse, "$.originalTransferId"))
+                .isEqualTo(originalId.toString());
+
+        String eventPayload = jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM outbox_events WHERE aggregate_id = ?",
+                String.class,
+                UUID.fromString(reversalId)
+        );
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.eventType"))
+                .isEqualTo("TransferReversed");
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<Integer>read(eventPayload, "$.eventVersion"))
+                .isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.correlationId"))
+                .isEqualTo(correlationId.toString());
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.originalTransferId"))
+                .isEqualTo(originalId.toString());
+
+        mvc.perform(get("/api/v1/accounts/" + accounts.get(0)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.balance").value(2500.00));
+        mvc.perform(get("/api/v1/accounts/" + accounts.get(1)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.balance").value(1000.00));
+        mvc.perform(get("/api/v1/transfers/" + originalId).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.type").value("INTERNAL_TRANSFER"))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        String replay = mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", reversalKey))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(replay, "$.id")).isEqualTo(reversalId);
+        Integer reversalEventCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
+                Integer.class,
+                UUID.fromString(reversalId)
+        );
+        org.assertj.core.api.Assertions.assertThat(reversalEventCount).isEqualTo(1);
+
+        mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A transferência já possui um estorno."));
+        mvc.perform(post("/api/v1/transfers/" + reversalId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Um estorno não pode ser estornado."));
+        mvc.perform(get("/api/v1/transfers").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.completed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.replayed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.rejected")
+                        .queryParam("tag", "reason:reversal-already-exists"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements[0].value", greaterThan(0.0)));
+        mvc.perform(get("/actuator/metrics/payflow.reversals.duration"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableTags[?(@.tag == 'outcome')]").exists());
+    }
+
+    @Test
+    void rejectsReversalWhenDestinationNoLongerHasTheTransferredAmount() throws Exception {
+        String token = registerAndLogin("reversal-balance@example.com", "Reversal Balance");
+        java.util.List<String> accounts = accountIds(token);
+        UUID originalId = createTransfer(token, accounts.get(0), accounts.get(1), "100.00", UUID.randomUUID());
+        createTransfer(token, accounts.get(1), accounts.get(0), "1100.00", UUID.randomUUID());
+
+        mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", UUID.randomUUID()))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.detail").value("Saldo insuficiente para realizar a transferência."));
+        mvc.perform(get("/api/v1/transfers").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void doesNotDebitAnotherUsersAccountDuringReversal() throws Exception {
+        String senderToken = registerAndLogin("reversal-sender@example.com", "Reversal Sender");
+        String recipientToken = registerAndLogin("reversal-recipient@example.com", "Reversal Recipient");
+        String senderAccount = accountIds(senderToken).get(0);
+        String recipientAccount = accountIds(recipientToken).get(0);
+        UUID originalId = createTransfer(senderToken, senderAccount, recipientAccount, "50.00", UUID.randomUUID());
+
+        mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .header("Idempotency-Key", UUID.randomUUID()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
+                        .header("Authorization", "Bearer " + recipientToken)
+                        .header("Idempotency-Key", UUID.randomUUID()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/accounts/" + recipientAccount)
+                        .header("Authorization", "Bearer " + recipientToken))
+                .andExpect(jsonPath("$.balance").value(2550.00));
+    }
+
+    @Test
+    void serializesConcurrentReversalsWithDifferentKeys() throws Exception {
+        String token = registerAndLogin("concurrent-reversal@example.com", "Concurrent Reversal");
+        java.util.List<String> accounts = accountIds(token);
+        UUID originalId = createTransfer(token, accounts.get(0), accounts.get(1), "100.00", UUID.randomUUID());
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> performReversalAfter(ready, start, token, originalId,
+                    UUID.randomUUID()));
+            var second = executor.submit(() -> performReversalAfter(ready, start, token, originalId,
+                    UUID.randomUUID()));
+            org.assertj.core.api.Assertions.assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            java.util.List<Integer> statuses = java.util.List.of(
+                    first.get(10, TimeUnit.SECONDS).getResponse().getStatus(),
+                    second.get(10, TimeUnit.SECONDS).getResponse().getStatus()
+            );
+            org.assertj.core.api.Assertions.assertThat(statuses).containsExactlyInAnyOrder(201, 409);
+        }
+
+        mvc.perform(get("/api/v1/accounts/" + accounts.get(0)).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.balance").value(2500.00));
+        mvc.perform(get("/api/v1/transfers").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
     void requiresIdempotencyKeyToCreateTransfer() throws Exception {
         String token = registerAndLogin("missing-key@example.com", "Missing Key User");
         java.util.List<String> accounts = accountIds(token);
@@ -435,6 +588,15 @@ class TransferApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'Idempotency-Key')]")
                         .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/transfers'].post.parameters[?(@.name == 'X-Correlation-ID')]")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['201']")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['409']")
+                        .exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['409']"
+                        + ".content['application/problem+json'].schema").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/transfers/{id}/reversals'].post.responses['422']")
                         .exists())
                 .andExpect(jsonPath("$.paths['/api/v1/me'].get.security[0].bearerAuth").exists());
 
@@ -541,6 +703,30 @@ class TransferApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andReturn();
+    }
+
+    private MvcResult performReversalAfter(CountDownLatch ready, CountDownLatch start, String token,
+                                           UUID transferId, UUID idempotencyKey) throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent reversal start was not released.");
+        }
+        return mvc.perform(post("/api/v1/transfers/" + transferId + "/reversals")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idempotencyKey))
+                .andReturn();
+    }
+
+    private UUID createTransfer(String token, String sourceId, String destinationId, String amount,
+                                UUID idempotencyKey) throws Exception {
+        String response = mvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(transferJson(sourceId, destinationId, amount)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return UUID.fromString(JsonPath.read(response, "$.id"));
     }
 
     private java.util.List<String> accountIds(String token) throws Exception {
