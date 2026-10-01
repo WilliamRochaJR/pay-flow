@@ -97,3 +97,9 @@ aprovação manual, prazo limite, taxas, fraude e integração externa continuam
 - reutiliza concorrência e idempotência dos ADRs 0015 e 0021;
 - usa a outbox e a auditoria definidas pelo ADR-0023;
 - não altera o adiamento do Audit Service decidido no ADR-0024.
+
+## Estado da implementação
+
+- M5.1.1 concluído com migration, domínio, endpoint, idempotência e testes concorrentes;
+- M5.1.2 concluído com `TransferReversed.v1`, outbox atômica, tópico
+  `payflow.transfer-events.v1` e projeção de auditoria ligada à transferência original.

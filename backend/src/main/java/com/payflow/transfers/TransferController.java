@@ -47,8 +47,14 @@ public class TransferController {
             @PathVariable UUID id,
             @Parameter(description = "UUID único da tentativa", required = true)
             @RequestHeader("Idempotency-Key") UUID idempotencyKey,
+            @RequestAttribute(CorrelationIdFilter.ATTRIBUTE_NAME) String correlationId,
             @AuthenticationPrincipal Jwt jwt) {
-        TransferResponse response = service.reverse(id, UUID.fromString(jwt.getSubject()), idempotencyKey);
+        TransferResponse response = service.reverse(
+                id,
+                UUID.fromString(jwt.getSubject()),
+                idempotencyKey,
+                correlationId
+        );
         var location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/v1/transfers/{id}")
                 .buildAndExpand(response.id())

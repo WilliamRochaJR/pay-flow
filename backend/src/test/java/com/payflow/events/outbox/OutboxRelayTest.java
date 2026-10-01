@@ -97,7 +97,7 @@ class OutboxRelayTest {
 
     private OutboxRelayProperties properties() {
         return new OutboxRelayProperties(
-                "payflow.transfer-completed.v1", 20, Duration.ofSeconds(5), 5,
+                "payflow.transfer-events.v1", 20, Duration.ofSeconds(5), 5,
                 Duration.ofDays(7), Duration.ofHours(1));
     }
 }

@@ -338,10 +338,12 @@ class TransferApiIntegrationTest {
         java.util.List<String> accounts = accountIds(token);
         UUID originalId = createTransfer(token, accounts.get(0), accounts.get(1), "350.00", UUID.randomUUID());
         UUID reversalKey = UUID.randomUUID();
+        UUID correlationId = UUID.randomUUID();
 
         MvcResult firstResult = mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
                         .header("Authorization", "Bearer " + token)
-                        .header("Idempotency-Key", reversalKey))
+                        .header("Idempotency-Key", reversalKey)
+                        .header("X-Correlation-ID", correlationId))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andReturn();
@@ -353,6 +355,20 @@ class TransferApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(firstResponse, "$.type"))
                 .isEqualTo("REVERSAL");
         org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(firstResponse, "$.originalTransferId"))
+                .isEqualTo(originalId.toString());
+
+        String eventPayload = jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM outbox_events WHERE aggregate_id = ?",
+                String.class,
+                UUID.fromString(reversalId)
+        );
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.eventType"))
+                .isEqualTo("TransferReversed");
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<Integer>read(eventPayload, "$.eventVersion"))
+                .isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.correlationId"))
+                .isEqualTo(correlationId.toString());
+        org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(eventPayload, "$.originalTransferId"))
                 .isEqualTo(originalId.toString());
 
         mvc.perform(get("/api/v1/accounts/" + accounts.get(0)).header("Authorization", "Bearer " + token))
@@ -369,6 +385,12 @@ class TransferApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         org.assertj.core.api.Assertions.assertThat(JsonPath.<String>read(replay, "$.id")).isEqualTo(reversalId);
+        Integer reversalEventCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
+                Integer.class,
+                UUID.fromString(reversalId)
+        );
+        org.assertj.core.api.Assertions.assertThat(reversalEventCount).isEqualTo(1);
 
         mvc.perform(post("/api/v1/transfers/" + originalId + "/reversals")
                         .header("Authorization", "Bearer " + token)

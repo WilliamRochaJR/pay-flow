@@ -130,7 +130,7 @@ Esses itens não são requisitos para declarar o portfólio pronto.
 ### M5.1 — estorno imutável
 
 - [x] M5.1.1: criar domínio, persistência e endpoint idempotente de estorno integral;
-- [ ] M5.1.2: publicar `TransferReversed.v1` e projetá-lo na auditoria;
+- [x] M5.1.2: publicar `TransferReversed.v1` e projetá-lo na auditoria;
 - [ ] M5.1.3: permitir estorno no front-end com confirmação e feedback;
 - [ ] M5.1.4: cobrir o fluxo E2E, métricas e documentação de release.
 

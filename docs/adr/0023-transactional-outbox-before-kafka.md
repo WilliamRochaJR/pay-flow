@@ -108,7 +108,7 @@ auditoria pertencem à mesma transação; se a segunda gravação falhar, ambas 
 O M3.4 limita o relay a cinco tentativas persistidas. Uma falha registra `last_attempt_at` e
 `last_error`; a última registra `exhausted_at`, retirando o evento dos lotes automáticos sem apagar a
 evidência operacional. No consumo, duas novas tentativas com intervalo fixo antecedem o envio do
-payload original ao tópico `payflow.transfer-completed.v1.DLT`. Tópicos e outbox publicada usam
+payload original ao tópico DLT configurado. Tópicos e outbox publicada usam
 retenção padrão de sete dias. Métricas de resultado e o `correlationId` nos logs permitem seguir o
 evento sem usar identificadores como tags.
 
