@@ -4,7 +4,7 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
-## [Não publicado]
+## [0.5.0] - 2026-10-01
 
 ### Adicionado
 
@@ -150,6 +150,7 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - a demonstração pública não movimenta dinheiro real;
 - os ambientes AWS permanecem desligados por padrão e são removidos depois do TTL.
 
+[0.5.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.5.0
 [0.4.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0
 [0.3.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.2.0
