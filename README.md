@@ -108,14 +108,15 @@ npm run check:e2e
 
 `check` executa formatação, tipos, lint, cobertura, testes e builds do front e `mvn verify` no back. `check:e2e` reconstrói a aplicação completa e executa o fluxo Playwright. Os testes de integração e E2E precisam do Docker ativo.
 
-## Primeiro produto publicável
+## Produto publicável
 
-O usuário poderá:
+O usuário pode:
 
 1. criar uma conta e entrar;
 2. consultar saldo e histórico;
 3. transferir um valor entre duas contas de demonstração;
-4. consultar o resultado da transferência.
+4. estornar integralmente uma transferência com confirmação explícita;
+5. consultar a operação original e sua compensação no histórico.
 
 O release público inclui autenticação JWT, validação de saldo, transferência atômica e uma interface responsiva. Não movimenta dinheiro real e será identificado como ambiente de demonstração.
 

@@ -82,8 +82,9 @@ usada por `TransferCompleted.v1`.
 
 Cada incremento deve terminar executável e não depende da extração do Audit Service.
 
-Os incrementos M5.1.1, M5.1.2 e M5.1.3 estão implementados. O fluxo de interface mantém uma chave
-idempotente por tentativa, exige confirmação explícita e atualiza contas e histórico após o sucesso.
+Os quatro incrementos do M5.1 estão implementados. O fluxo de interface mantém uma chave idempotente
+por tentativa, exige confirmação explícita e atualiza contas e histórico após o sucesso. O caminho
+completo possui E2E, métricas próprias, contrato OpenAPI e notas preparadas para a versão 0.5.0.
 
 ## Consequências
 

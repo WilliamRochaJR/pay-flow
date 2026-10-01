@@ -162,7 +162,7 @@ não alteram as regras de autorização.
 Não haverá `PUT` ou `DELETE` de transferências. Uma operação financeira concluída é um registro
 histórico; o ADR-0025 define o estorno como uma nova operação vinculada à original.
 
-## Estorno integral — M5.1.1
+## Estorno integral — M5.1
 
 O ADR-0025 define o contrato:
 
@@ -182,6 +182,25 @@ sem movimentar os saldos novamente. Uma chave diferente para uma transferência 
 
 A resposta usa `type: "REVERSAL"` e informa `originalTransferId`. Transferências comuns usam
 `type: "INTERNAL_TRANSFER"` e não possuem vínculo de origem.
+
+Exemplo de resposta:
+
+```json
+{
+  "id": "47bfd5bf-61c8-4559-97d6-b143779b762c",
+  "type": "REVERSAL",
+  "originalTransferId": "7e2cb1ed-c44f-4cb2-9495-b1ca81042c5a",
+  "sourceAccountId": "565620a5-e66d-48c9-8ff2-39aa22ace194",
+  "destinationAccountId": "5b99802c-24c0-4462-8260-6317a984da20",
+  "amount": 350.0,
+  "currency": "BRL",
+  "status": "COMPLETED",
+  "createdAt": "2026-10-01T16:00:00Z"
+}
+```
+
+O OpenAPI declara explicitamente as respostas `201`, `400`, `401`, `404`, `409` e `422` desse
+endpoint. O Swagger UI permite autenticar com JWT e experimentar o contrato localmente.
 
 Na mesma transação que conclui o estorno, a outbox grava `TransferReversed.v1`. O contrato inclui
 `eventId`, `eventType`, `eventVersion`, `occurredAt`, `correlationId`, `transferId`,

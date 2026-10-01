@@ -16,6 +16,8 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - testes com PostgreSQL real para saldo, autorização, idempotência e concorrência do estorno;
 - evento `TransferReversed.v1` gravado na outbox na mesma transação do estorno;
 - projeção de auditoria com `original_transfer_id` pesquisável para eventos de estorno;
+- métricas específicas e E2E do fluxo completo de criação e estorno;
+- contrato OpenAPI explícito e notas preparatórias da versão 0.5.0;
 
 ### Segurança
 

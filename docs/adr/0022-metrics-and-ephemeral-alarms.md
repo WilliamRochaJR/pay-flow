@@ -22,6 +22,14 @@ tags de cardinalidade limitada:
 - `payflow.transfers.failed`;
 - `payflow.transfers.duration`, com `outcome` limitado.
 
+O M5.1 acrescenta a família equivalente para estornos:
+
+- `payflow.reversals.completed`;
+- `payflow.reversals.replayed`;
+- `payflow.reversals.rejected`, com `reason` limitado aos códigos conhecidos;
+- `payflow.reversals.failed`;
+- `payflow.reversals.duration`, com `outcome` limitado.
+
 Contadores de conclusão e replay só são incrementados depois do commit da transação. IDs de usuário,
 conta, transferência ou correlação não serão tags, pois criariam séries ilimitadas e aumentariam custo.
 
