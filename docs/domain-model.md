@@ -404,5 +404,5 @@ O modelo acima mostra somente o que existe no código. A chave de idempotência 
 transferências e a outbox guarda a intenção atômica de publicar `TransferCompleted.v1`. O relay do
 M3.2 entrega esses registros ao Kafka local opcional e o consumidor do M3.3 cria a projeção de
 auditoria com deduplicação persistente. O M5.1.1 acrescenta estorno integral como uma nova operação
-imutável, e o M5.1.2 publica `TransferReversed.v1` na mesma outbox e o projeta na auditoria. O próximo
-incremento expõe o caso de uso no front-end.
+imutável, o M5.1.2 publica `TransferReversed.v1` na mesma outbox e o projeta na auditoria, e o M5.1.3
+expõe o caso de uso no front-end com confirmação e feedback.

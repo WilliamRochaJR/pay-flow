@@ -8,6 +8,8 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 
 ### Adicionado
 
+- fluxo de estorno no dashboard com confirmação explícita, proteção contra envio duplicado e
+  feedback de sucesso ou erro;
 - endpoint idempotente para estorno integral de transferências entre contas do mesmo usuário;
 - tipo `REVERSAL` vinculado à transferência original, sem alterar o registro concluído;
 - migration com constraints e índice único para impedir vínculos inválidos e estorno duplicado;

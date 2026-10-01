@@ -1,6 +1,6 @@
 type CryptoProvider = Pick<Crypto, 'getRandomValues'> & Partial<Pick<Crypto, 'randomUUID'>>
 
-export function createTransferIdempotencyKey(provider: CryptoProvider = globalThis.crypto): string {
+export function createIdempotencyKey(provider: CryptoProvider = globalThis.crypto): string {
   if (typeof provider.randomUUID === 'function') {
     return provider.randomUUID()
   }

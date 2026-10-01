@@ -13,7 +13,7 @@ import type { Account } from '../features/accounts/list-accounts/listAccounts.mo
 import { listAccounts } from '../features/accounts/list-accounts/listAccounts.service'
 import { TransferForm } from '../features/transfers/create-transfer/components/TransferForm'
 import { createTransfer } from '../features/transfers/create-transfer/createTransfer'
-import { createTransferIdempotencyKey } from '../features/transfers/create-transfer/createTransferIdempotencyKey'
+import { createIdempotencyKey } from '../shared/idempotency/createIdempotencyKey'
 import type { CreateTransferInput } from '../features/transfers/create-transfer/createTransfer.model'
 import { TransferHistory } from '../features/transfers/list-transfers/components/TransferHistory'
 import {
@@ -22,6 +22,7 @@ import {
   type TransferPage,
 } from '../features/transfers/list-transfers/listTransfers.model'
 import { listTransfers } from '../features/transfers/list-transfers/listTransfers.service'
+import { reverseTransfer } from '../features/transfers/reverse-transfer/reverseTransfer.service'
 import { formatCurrency } from '../shared/formatters/currency'
 import { ApiError } from '../shared/api/httpClient'
 import './App.css'
@@ -39,9 +40,11 @@ function AppRoutes() {
   const [destinationId, setDestinationId] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [reversingTransferId, setReversingTransferId] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const pendingTransfer = useRef<{ fingerprint: string; key: string } | null>(null)
+  const reversalKeys = useRef(new Map<string, string>())
 
   const loadDashboard = useCallback(async () => {
     if (!accessToken) return
@@ -122,7 +125,7 @@ function AppRoutes() {
     try {
       const fingerprint = JSON.stringify(input)
       if (pendingTransfer.current?.fingerprint !== fingerprint) {
-        pendingTransfer.current = { fingerprint, key: createTransferIdempotencyKey() }
+        pendingTransfer.current = { fingerprint, key: createIdempotencyKey() }
       }
       await createTransfer(input, pendingTransfer.current.key, accessToken)
       pendingTransfer.current = null
@@ -137,6 +140,29 @@ function AppRoutes() {
       return false
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function submitReversal(transferId: string): Promise<boolean> {
+    setError('')
+    setSuccess('')
+    setReversingTransferId(transferId)
+    try {
+      const idempotencyKey = reversalKeys.current.get(transferId) ?? createIdempotencyKey()
+      reversalKeys.current.set(transferId, idempotencyKey)
+      await reverseTransfer(transferId, idempotencyKey, accessToken)
+      reversalKeys.current.delete(transferId)
+      setSuccess('Transferência estornada com sucesso.')
+      if (transferPage === 0) await loadDashboard()
+      else setTransferPage(0)
+      return true
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Não foi possível estornar a transferência.',
+      )
+      return false
+    } finally {
+      setReversingTransferId('')
     }
   }
 
@@ -209,6 +235,8 @@ function AppRoutes() {
               setTransferPage(0)
             }}
             onPageChange={setTransferPage}
+            reversingTransferId={reversingTransferId}
+            onReverse={submitReversal}
           />
         </section>
       </main>

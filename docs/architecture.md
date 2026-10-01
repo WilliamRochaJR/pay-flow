@@ -66,8 +66,9 @@ src/
 │   │   └── list-accounts/
 │   └── transfers/
 │       ├── create-transfer/
-│       └── list-transfers/
-└── shared/              cliente HTTP, formatadores e estilos globais
+│       ├── list-transfers/
+│       └── reverse-transfer/
+└── shared/              cliente HTTP, idempotência, formatadores e estilos globais
 ```
 
 O front-end é organizado por domínio e caso de uso. Cada caso pode conter modelo, service, coordenação, componentes internos e testes colocalizados. Código começa dentro da feature que o utiliza e só vai para `shared` quando for realmente transversal. Bibliotecas de cache, roteamento e estado global serão adicionadas apenas quando a aplicação apresentar essas necessidades.

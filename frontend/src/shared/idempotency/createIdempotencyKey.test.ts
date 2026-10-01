@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTransferIdempotencyKey } from './createTransferIdempotencyKey'
+import { createIdempotencyKey } from './createIdempotencyKey'
 
-describe('createTransferIdempotencyKey', () => {
+describe('createIdempotencyKey', () => {
   it('uses the native UUID implementation when it is available', () => {
     const randomUUID = vi.fn(
       () =>
@@ -9,7 +9,7 @@ describe('createTransferIdempotencyKey', () => {
     )
     const provider = { randomUUID, getRandomValues: vi.fn() } as unknown as Crypto
 
-    expect(createTransferIdempotencyKey(provider)).toBe('123e4567-e89b-42d3-a456-426614174000')
+    expect(createIdempotencyKey(provider)).toBe('123e4567-e89b-42d3-a456-426614174000')
     expect(randomUUID).toHaveBeenCalledOnce()
     expect(provider.getRandomValues).not.toHaveBeenCalled()
   })
@@ -22,6 +22,6 @@ describe('createTransferIdempotencyKey', () => {
       },
     } as Crypto
 
-    expect(createTransferIdempotencyKey(provider)).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f')
+    expect(createIdempotencyKey(provider)).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f')
   })
 })
