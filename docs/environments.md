@@ -150,6 +150,10 @@ Construir as imagens uma vez, identificá-las por digest e promover exatamente o
 Essa etapa evita que builds separados da mesma revisão produzam resultados diferentes, mas não é
 necessária para criar os primeiros ambientes isolados.
 
+O [ADR-0026](adr/0026-immutable-images-ecr-promotion-and-rollback.md) aceita o ECR como registro,
+define o digest como identidade autoritativa da imagem e estabelece rollback pelo manifesto aprovado
+anterior. A implementação permanece incremental e ainda não altera o deploy operacional atual.
+
 ## Custos e segurança
 
 Criar `development` e `homologation` não significa mantê-los ligados. Todos continuam manuais,
