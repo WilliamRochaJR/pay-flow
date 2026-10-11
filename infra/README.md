@@ -5,6 +5,7 @@ Esta pasta contém a fundação mínima e reproduzível do primeiro deploy públ
 ```text
 infra/
 ├── bootstrap/
+│   ├── artifacts/
 │   ├── cost-controls/
 │   ├── identity/
 │   └── state/
@@ -19,7 +20,8 @@ infra/
         └── variables.tf
 ```
 
-O bootstrap cria o bucket persistente de state, o orçamento da conta e as identidades OIDC de deploy.
+O bootstrap cria o bucket persistente de state, o registro de artefatos, o orçamento da conta e as
+identidades OIDC de deploy.
 O root Terraform em `environments/production` possui esse nome por razões históricas, mas recebe a
 variável `environment` e é compartilhado pelos ambientes efêmeros. Cada uso possui state, roles, nomes
 e dados isolados. Ele cria VPC, subnet pública, Internet Gateway, Security Group, EC2, Elastic IP,
@@ -35,7 +37,8 @@ Os exemplos específicos de identidade para `development` e `homologation` ficam
 1. `bootstrap/state`: bucket persistente do Terraform (já deve existir antes dos demais módulos);
 2. `bootstrap/cost-controls`: orçamento persistente e alertas;
 3. `bootstrap/identity`: roles OIDC separadas por ambiente e por responsabilidade;
-4. `environments/production`: root compartilhado dos recursos efêmeros criados e destruídos pelo
+4. `bootstrap/artifacts`: ECR e identidade OIDC persistentes para imagens imutáveis;
+5. `environments/production`: root compartilhado dos recursos efêmeros criados e destruídos pelo
    workflow manual.
 
-Os três primeiros itens não pertencem ao TTL. Nenhum workflow de Pull Request executa `apply`.
+Os quatro primeiros itens não pertencem ao TTL. Nenhum workflow de Pull Request executa `apply`.
