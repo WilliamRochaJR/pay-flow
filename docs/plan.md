@@ -137,6 +137,21 @@ Esses itens não são requisitos para declarar o portfólio pronto.
 Critério de aceite: o usuário compensa uma transferência própria sem alterar ou apagar a operação
 original, e repetição ou concorrência não movimenta o saldo mais de uma vez.
 
+### M5.2 — artefatos imutáveis e rollback
+
+Planejado pelo ADR-0026:
+
+- [ ] criar repositórios ECR e permissões mínimas de publicação e leitura;
+- [ ] construir e verificar uma única vez as imagens da API e do front-end;
+- [ ] registrar a revisão e os dois digests em um manifesto auditável;
+- [ ] promover os mesmos digests entre homologação e produção;
+- [ ] retirar o build da EC2 no Compose de produção;
+- [ ] implementar e exercitar rollback protegido para um manifesto anterior.
+
+Critério de aceite: homologação e produção executam os mesmos digests aprovados, e uma publicação pode
+retornar à versão de aplicação anterior sem rebuild nem movimentação de tags. Rollback de banco não
+faz parte deste marco; migrations precisam preservar compatibilidade durante a janela de retorno.
+
 ## Backlog inicial em ordem
 
 1. Criar esqueleto do monorepo e Compose local.
