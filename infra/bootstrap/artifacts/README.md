@@ -57,3 +57,13 @@ policy de leitura serão consumidos pelos próximos incrementos do M5.2.
 
 O `prevent_destroy` dos repositórios protege os artefatos contra remoção acidental. Excluir os
 repositórios exigirá uma alteração consciente desse código e tratamento prévio das imagens retidas.
+
+## Estado aplicado
+
+Em 2026-10-11, o plano inicial foi aplicado com sete criações, nenhuma alteração e nenhuma
+destruição. Os repositórios `payflow-api` e `payflow-frontend`, a role de publicação e a policy de
+leitura foram verificados na AWS. Um `terraform plan -detailed-exitcode` posterior retornou `No
+changes`.
+
+Os repositórios permanecem vazios. O próximo incremento deve criar o GitHub Environment `artifacts`,
+configurar `AWS_ARTIFACT_PUBLISHER_ROLE_ARN` e publicar as primeiras imagens por um workflow próprio.
