@@ -65,5 +65,26 @@ destruição. Os repositórios `payflow-api` e `payflow-frontend`, a role de pub
 leitura foram verificados na AWS. Um `terraform plan -detailed-exitcode` posterior retornou `No
 changes`.
 
-Os repositórios permanecem vazios. O próximo incremento deve criar o GitHub Environment `artifacts`,
-configurar `AWS_ARTIFACT_PUBLISHER_ROLE_ARN` e publicar as primeiras imagens por um workflow próprio.
+O GitHub Environment `artifacts` armazena `AWS_ARTIFACT_PUBLISHER_ROLE_ARN`. O workflow
+`build-immutable-images.yml` aceita `develop`, `release/X.Y.Z` ou uma tag anotada `vX.Y.Z`, exige a CI
+verde para o commit exato, reutiliza imagens existentes e publica somente as imagens ausentes.
+
+Cada imagem recebe uma tag imutável `git-<SHA completo>`. Depois da publicação, o workflow consulta os
+digests no ECR e salva `manifest.json` como artifact da execução por 90 dias. O manifesto relaciona a
+revisão Git, a execução e as referências exatas `repository@sha256:digest` da API e do front-end.
+
+O Environment foi criado sem regra de aprovação. Adicionar required reviewers ou restringir branches
+é uma mudança de proteção separada e deve ser explicitamente autorizada.
+
+## Publicar manualmente
+
+Pela GitHub CLI:
+
+```bash
+gh workflow run build-immutable-images.yml \
+  --ref develop \
+  --field revision=develop
+```
+
+O parâmetro `--ref` seleciona a versão do próprio workflow. O campo `revision` seleciona o código que
+será transformado nas imagens. Durante a migração, ambos devem apontar para `develop`.
