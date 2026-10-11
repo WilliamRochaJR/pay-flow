@@ -175,3 +175,15 @@ Esta decisão não introduz ECS, Kubernetes, RDS, deploy contínuo automático n
 - mantém a EC2 e o Docker Compose adotados no ADR-0004;
 - amplia a autenticação AWS por OIDC definida no ADR-0018;
 - depende dos testes e Quality Gates dos ADRs 0007 e 0009 antes da publicação.
+
+## Estado da implementação
+
+Em 2026-10-11, o M5.2.1 criou os repositórios persistentes `payflow-api` e `payflow-frontend`, ambos
+com tags imutáveis, criptografia AES-256, scan no push e expiração de imagens sem tag após sete dias.
+A mesma fundação criou a role OIDC `payflow-artifacts-github-publisher`, limitada à publicação nesses
+dois repositórios, e a policy `payflow-ecr-pull`, limitada à leitura das imagens pelo runtime.
+
+O plano aplicado continha sete criações, nenhuma alteração e nenhuma destruição. A verificação
+posterior retornou `No changes`, confirmando que o state remoto e os recursos reais permanecem
+alinhados. Os repositórios ainda estão vazios; build, publicação e manifesto de digests pertencem ao
+M5.2.2.

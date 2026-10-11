@@ -141,7 +141,7 @@ original, e repetição ou concorrência não movimenta o saldo mais de uma vez.
 
 Planejado pelo ADR-0026:
 
-- [ ] criar repositórios ECR e permissões mínimas de publicação e leitura;
+- [x] criar repositórios ECR e permissões mínimas de publicação e leitura;
 - [ ] construir e verificar uma única vez as imagens da API e do front-end;
 - [ ] registrar a revisão e os dois digests em um manifesto auditável;
 - [ ] promover os mesmos digests entre homologação e produção;
