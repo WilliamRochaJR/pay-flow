@@ -1,0 +1,205 @@
+name: Build Immutable Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: develop, release/X.Y.Z or an annotated vX.Y.Z tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+  id-token: write
+
+concurrency:
+  group: immutable-images-${{ inputs.revision }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and publish immutable images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: artifacts
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout artifact policy
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve artifact context
+        id: context
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: .github/scripts/resolve-artifact-context.sh "$REVISION"
+
+      - name: Validate selected Git reference
+        id: revision
+        env:
+          REVISION: ${{ steps.context.outputs.revision }}
+          SOURCE_TYPE: ${{ steps.context.outputs.source_type }}
+        run: |
+          git fetch --force --prune origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+          case "$SOURCE_TYPE" in
+            development|release)
+              revision_sha=$(git rev-parse --verify "refs/remotes/origin/${REVISION}^{commit}")
+              ;;
+            version)
+              test "$(git cat-file -t "refs/tags/$REVISION")" = tag || {
+                echo 'Version artifacts require an annotated Git tag.'
+                exit 1
+              }
+              revision_sha=$(git rev-parse --verify "refs/tags/${REVISION}^{commit}")
+              git merge-base --is-ancestor "$revision_sha" refs/remotes/origin/main || {
+                echo 'The version tag must point to a commit contained in main.'
+                exit 1
+              }
+              ;;
+          esac
+          echo "sha=$revision_sha" >> "$GITHUB_OUTPUT"
+          echo "image_tag=git-$revision_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Require successful CI for the exact revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          checks_file=$(mktemp)
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "repos/${GITHUB_REPOSITORY}/commits/${REVISION_SHA}/check-runs?per_page=100" \
+            > "$checks_file"
+          required_checks=('Terraform' 'Production Compose' 'Front-end' 'Back-end' 'E2E')
+          for required_check in "${required_checks[@]}"; do
+            conclusion=$(jq -r \
+              --arg name "$required_check" \
+              '[.check_runs[] | select(.name == $name)] | sort_by(.started_at) | last | .conclusion // "missing"' \
+              "$checks_file")
+            test "$conclusion" = success || {
+              echo "Required check '$required_check' is '$conclusion' for $REVISION_SHA."
+              exit 1
+            }
+          done
+
+      - name: Checkout selected revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+
+      - name: Configure AWS credentials for artifact publication
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ARTIFACT_PUBLISHER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Inspect existing immutable images
+        id: existing
+        env:
+          IMAGE_TAG: ${{ steps.revision.outputs.image_tag }}
+        run: |
+          api_digest=$(aws ecr describe-images \
+            --repository-name payflow-api \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null || true)
+          frontend_digest=$(aws ecr describe-images \
+            --repository-name payflow-frontend \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null || true)
+          test "$api_digest" != None || api_digest=''
+          test "$frontend_digest" != None || frontend_digest=''
+          echo "api_digest=$api_digest" >> "$GITHUB_OUTPUT"
+          echo "frontend_digest=$frontend_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.existing.outputs.api_digest == '' || steps.existing.outputs.frontend_digest == ''
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish API image
+        if: steps.existing.outputs.api_digest == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/payflow-api:${{ steps.revision.outputs.image_tag }}
+          cache-from: type=gha,scope=payflow-api
+          cache-to: type=gha,mode=max,scope=payflow-api
+
+      - name: Build and publish front-end image
+        if: steps.existing.outputs.frontend_digest == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/payflow-frontend:${{ steps.revision.outputs.image_tag }}
+          cache-from: type=gha,scope=payflow-frontend
+          cache-to: type=gha,mode=max,scope=payflow-frontend
+
+      - name: Resolve published digests and create manifest
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REVISION: ${{ steps.context.outputs.revision }}
+          REVISION_SHA: ${{ steps.revision.outputs.sha }}
+          IMAGE_TAG: ${{ steps.revision.outputs.image_tag }}
+        run: |
+          api_digest=$(aws ecr describe-images \
+            --repository-name payflow-api \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+          frontend_digest=$(aws ecr describe-images \
+            --repository-name payflow-frontend \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+          [[ "$api_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$frontend_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          mkdir -p artifact-manifest
+          jq -n \
+            --arg revision "$REVISION" \
+            --arg revisionSha "$REVISION_SHA" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg workflowRunId "$GITHUB_RUN_ID" \
+            --arg generatedAt "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg apiImage "$REGISTRY/payflow-api@$api_digest" \
+            --arg apiDigest "$api_digest" \
+            --arg frontendImage "$REGISTRY/payflow-frontend@$frontend_digest" \
+            --arg frontendDigest "$frontend_digest" \
+            '{
+              schemaVersion: 1,
+              revision: $revision,
+              revisionSha: $revisionSha,
+              repository: $repository,
+              workflowRunId: $workflowRunId,
+              generatedAt: $generatedAt,
+              images: {
+                api: {reference: $apiImage, digest: $apiDigest},
+                frontend: {reference: $frontendImage, digest: $frontendDigest}
+              }
+            }' > artifact-manifest/manifest.json
+          jq empty artifact-manifest/manifest.json
+          {
+            echo '## Immutable images'
+            echo
+            echo "- Revision: \`$REVISION_SHA\`"
+            echo "- API digest: \`$api_digest\`"
+            echo "- Front-end digest: \`$frontend_digest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload immutable image manifest
+        uses: actions/upload-artifact@v5
+        with:
+          name: payflow-image-manifest-${{ steps.revision.outputs.sha }}-${{ github.run_id }}
+          path: artifact-manifest/manifest.json
+          if-no-files-found: error
+          retention-days: 90
