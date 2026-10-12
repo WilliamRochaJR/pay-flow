@@ -145,10 +145,11 @@ da demonstração.
 
 ## Estado
 
-M0, M1, M2 e M3 estão concluídos. A versão
-[`v0.4.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0) acrescenta eventos ao
-monólito, com outbox transacional, Kafka local, auditoria deduplicada e tratamento operacional de
-falhas, sem manter nova infraestrutura AWS ligada.
+M0, M1, M2 e M3 estão concluídos; o M4 permanece adiado por decisão arquitetural, o M5.1 entregou
+estorno imutável e a versão
+[`v0.6.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.6.0) inicia o M5.2. Ela acrescenta
+a fundação ECR e o workflow de imagens imutáveis sem alterar ainda o runtime da EC2, que continua
+usando Docker Compose e build local durante a publicação.
 
 ## Licença
 
