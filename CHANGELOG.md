@@ -4,6 +4,33 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa
 [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.6.0] - 2026-10-11
+
+### Adicionado
+
+- ADR-0026 para build único, promoção por digest e rollback de aplicação;
+- fundação Terraform persistente para os repositórios ECR `payflow-api` e `payflow-frontend`;
+- tags imutáveis, criptografia, scan no push e expiração de imagens sem tag;
+- role OIDC exclusiva para publicação e policy somente leitura para o runtime;
+- GitHub Environment `artifacts` com a variável não sensível da role de publicação;
+- workflow manual para construir, publicar e reutilizar imagens identificadas pelo SHA do commit;
+- manifesto JSON auditável relacionando revisão, execução e digests da API e do front-end;
+- testes da política que aceita somente `develop`, `release/X.Y.Z` ou tags anotadas `vX.Y.Z`.
+
+### Segurança
+
+- o GitHub Actions continua usando credenciais AWS temporárias por OIDC;
+- a role de publicação possui escrita limitada aos dois repositórios do PayFlow;
+- as imagens não carregam secrets nem configuração específica de ambiente;
+- o workflow exige checks obrigatórios verdes para o commit exato antes do build.
+
+### Observações
+
+- os repositórios ECR são persistentes e não acompanham o TTL das EC2;
+- o runtime da EC2 ainda constrói as imagens localmente até o incremento de deploy por digest;
+- por ser a introdução do workflow manual, sua primeira execução ocorre depois que o arquivo alcança
+  a branch padrão; releases seguintes poderão construir a candidata ainda em `release/*`.
+
 ## [0.5.0] - 2026-10-01
 
 ### Adicionado
@@ -150,6 +177,7 @@ Todas as mudanças relevantes do PayFlow serão registradas neste arquivo. O for
 - a demonstração pública não movimenta dinheiro real;
 - os ambientes AWS permanecem desligados por padrão e são removidos depois do TTL.
 
+[0.6.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.6.0
 [0.5.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.5.0
 [0.4.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.4.0
 [0.3.0]: https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.3.0
