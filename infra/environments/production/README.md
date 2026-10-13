@@ -25,7 +25,7 @@ Para `homologation`, execute o workflow a partir de uma branch `release/X.Y.Z`, 
 - Elastic IP para DNS estável;
 - bucket S3 privado, versionado, criptografado e com retenção para backups;
 - alarmes CloudWatch efêmeros para falha de status da EC2 e CPU alta;
-- role da EC2 limitada a SSM e ao bucket de backup.
+- role da EC2 limitada a SSM, ao bucket de backup e à leitura das imagens PayFlow no ECR.
 
 PostgreSQL e API não terão portas públicas. Isso será garantido pelo Compose de produção na próxima
 etapa.
@@ -77,6 +77,20 @@ Na operação normal, o workflow manual `AWS Ephemeral PoC` executa `plan`, `app
 e `destroy`. O TTL padrão é de 60 minutos; 20 e 40 minutos continuam disponíveis quando uma
 demonstração mais curta for suficiente. Não execute `apply` local ao mesmo tempo, pois os dois
 processos compartilham o mesmo state e lock.
+
+Antes do `plan`, o workflow procura o artifact `payflow-image-manifest-<SHA>-<run-id>` produzido por
+`Build Immutable Images`. O SHA, os repositórios e os digests são validados; a execução é interrompida
+se o manifesto estiver ausente, expirado ou divergente. A EC2 autentica no ECR com sua role, executa
+`docker compose pull api frontend` e inicia o runtime com `up --no-build`. O Compose local não muda e
+continua aceitando `docker compose up --build`.
+
+O SHA selecionado identifica as imagens da aplicação. Já os arquivos operacionais — Compose,
+Caddyfile e automação — vêm do SHA do próprio workflow disparado. Essa separação permite promover ou
+reverter imagens imutáveis sem reconstruí-las e sem depender de um Compose antigo armazenado na tag
+da aplicação.
+
+Cada publicação saudável também salva por 90 dias um `payflow-deployment-manifest-*`, relacionando
+ambiente, revisão, execução de build, execução de deploy e os dois digests efetivamente usados.
 
 O workflow `AWS Ephemeral Cleanup` roda periodicamente e também aceita acionamento manual. Ele destrói
 o ambiente somente quando a concessão no S3 expirou; no acionamento manual, força a limpeza. Os

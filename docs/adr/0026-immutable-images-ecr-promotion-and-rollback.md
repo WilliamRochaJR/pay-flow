@@ -185,5 +185,11 @@ dois repositórios, e a policy `payflow-ecr-pull`, limitada à leitura das image
 
 O plano aplicado continha sete criações, nenhuma alteração e nenhuma destruição. A verificação
 posterior retornou `No changes`, confirmando que o state remoto e os recursos reais permanecem
-alinhados. Os repositórios ainda estão vazios; build, publicação e manifesto de digests pertencem ao
-M5.2.2.
+alinhados.
+
+Em 2026-10-13, o M5.2.2 publicou uma única vez as imagens da tag anotada `v0.6.0` e preservou o
+manifesto com a revisão completa e os dois digests como artifact da execução. O incremento seguinte
+ligou a policy `payflow-ecr-pull` à role da EC2, substituiu `build:` por referências `image:` no
+Compose de produção e passou o deploy a validar o manifesto, autenticar no ECR, executar `pull` e
+subir os containers com `--no-build`. Cada deploy saudável gera ainda um manifesto de implantação
+auditável. A promoção real pelos ambientes e o rollback protegido continuam pendentes.

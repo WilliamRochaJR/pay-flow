@@ -142,10 +142,10 @@ original, e repetição ou concorrência não movimenta o saldo mais de uma vez.
 Planejado pelo ADR-0026:
 
 - [x] criar repositórios ECR e permissões mínimas de publicação e leitura;
-- [ ] construir e verificar uma única vez as imagens da API e do front-end;
-- [ ] registrar a revisão e os dois digests em um manifesto auditável;
+- [x] construir e verificar uma única vez as imagens da API e do front-end;
+- [x] registrar a revisão e os dois digests em um manifesto auditável;
 - [ ] promover os mesmos digests entre homologação e produção;
-- [ ] retirar o build da EC2 no Compose de produção;
+- [x] retirar o build da EC2 no Compose de produção;
 - [ ] implementar e exercitar rollback protegido para um manifesto anterior.
 
 Critério de aceite: homologação e produção executam os mesmos digests aprovados, e uma publicação pode

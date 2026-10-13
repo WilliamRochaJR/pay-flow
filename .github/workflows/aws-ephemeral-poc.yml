@@ -27,6 +27,7 @@ on:
           - "60"
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
@@ -79,10 +80,60 @@ jobs:
             echo "REVISION_SHA=$(git rev-parse "${REVISION}^{commit}")"
           } >> "$GITHUB_ENV"
 
-      - name: Checkout selected revision
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.revision }}
+      - name: Download immutable image manifest
+        id: manifest_artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artifact_prefix="payflow-image-manifest-${REVISION_SHA}-"
+          artifact_record=$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.expired == false and (.name | startswith(\"$artifact_prefix\"))) | [.id, .name, .workflow_run.id] | @tsv" \
+            | head -n 1)
+          test -n "$artifact_record" || {
+            echo "No non-expired immutable image manifest exists for $REVISION_SHA."
+            echo 'Run Build Immutable Images for the selected revision before deploying it.'
+            exit 1
+          }
+          IFS=$'\t' read -r artifact_id artifact_name artifact_workflow_run_id <<< "$artifact_record"
+          workflow_path=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_workflow_run_id}" \
+            --jq '.path')
+          workflow_conclusion=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_workflow_run_id}" \
+            --jq '.conclusion')
+          test "$workflow_path" = '.github/workflows/build-immutable-images.yml' || {
+            echo "Artifact came from unexpected workflow: $workflow_path"
+            exit 1
+          }
+          test "$workflow_conclusion" = 'success' || {
+            echo "Artifact workflow run is not successful: $workflow_conclusion"
+            exit 1
+          }
+          mkdir -p "$RUNNER_TEMP/payflow-image-manifest"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+            > "$RUNNER_TEMP/payflow-image-manifest.zip"
+          unzip -q "$RUNNER_TEMP/payflow-image-manifest.zip" \
+            -d "$RUNNER_TEMP/payflow-image-manifest"
+          test -f "$RUNNER_TEMP/payflow-image-manifest/manifest.json"
+          {
+            echo "artifact_name=$artifact_name"
+            echo "artifact_workflow_run_id=$artifact_workflow_run_id"
+            echo "manifest_file=$RUNNER_TEMP/payflow-image-manifest/manifest.json"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate immutable image manifest
+        id: images
+        env:
+          ARTIFACT_WORKFLOW_RUN_ID: ${{ steps.manifest_artifact.outputs.artifact_workflow_run_id }}
+          MANIFEST_FILE: ${{ steps.manifest_artifact.outputs.manifest_file }}
+        run: >-
+          .github/scripts/validate-image-manifest.sh
+          "$MANIFEST_FILE"
+          "$REVISION_SHA"
+          "$ARTIFACT_WORKFLOW_RUN_ID"
+          "$GITHUB_REPOSITORY"
 
       - name: Validate deployment configuration
         env:
@@ -143,6 +194,8 @@ jobs:
 
       - name: Store encrypted runtime configuration
         env:
+          API_IMAGE: ${{ steps.images.outputs.api_image }}
+          FRONTEND_IMAGE: ${{ steps.images.outputs.frontend_image }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
@@ -153,6 +206,8 @@ jobs:
             echo 'PAYFLOW_SITE_ADDRESS=:80'
             echo "APP_PUBLIC_ORIGIN=$PUBLIC_URL"
             echo 'HTTP_PORT=80'
+            printf 'API_IMAGE=%s\n' "$API_IMAGE"
+            printf 'FRONTEND_IMAGE=%s\n' "$FRONTEND_IMAGE"
             echo 'POSTGRES_DB=payflow'
             echo 'POSTGRES_USER=payflow'
             printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
@@ -191,13 +246,16 @@ jobs:
 
       - name: Deploy selected revision through SSM
         env:
+          ECR_REGISTRY: ${{ steps.images.outputs.registry }}
           INSTANCE_ID: ${{ steps.infrastructure.outputs.instance_id }}
-          REVISION: ${{ env.REVISION_SHA }}
+          TOOLING_REVISION: ${{ github.sha }}
         run: |
           command_payload=$(jq -n \
             --arg instance "$INSTANCE_ID" \
-            --arg revision "$REVISION" \
+            --arg tooling_revision "$TOOLING_REVISION" \
             --arg parameter "$RUNTIME_PARAMETER" \
+            --arg registry "$ECR_REGISTRY" \
+            --arg region "$AWS_REGION" \
             '{
               DocumentName: "AWS-RunShellScript",
               InstanceIds: [$instance],
@@ -210,11 +268,13 @@ jobs:
                   "install -d -m 0750 /opt/payflow",
                   "if [ ! -d /opt/payflow/repository/.git ]; then git clone https://github.com/WilliamRochaJR/pay-flow.git /opt/payflow/repository; fi",
                   "git -C /opt/payflow/repository fetch --prune origin",
-                  ("git -C /opt/payflow/repository checkout --force " + $revision),
+                  ("git -C /opt/payflow/repository checkout --force " + $tooling_revision),
                   ("aws ssm get-parameter --name " + $parameter + " --with-decryption --query Parameter.Value --output text > /opt/payflow/repository/.env.production"),
                   "chmod 0600 /opt/payflow/repository/.env.production",
+                  ("aws ecr get-login-password --region " + $region + " | docker login --username AWS --password-stdin " + $registry),
                   "cd /opt/payflow/repository",
-                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --build --remove-orphans > /tmp/payflow-compose.log 2>&1 || { tail -n 120 /tmp/payflow-compose.log; docker compose --env-file .env.production -f compose.prod.yaml ps --all; docker compose --env-file .env.production -f compose.prod.yaml logs --no-color --tail 120 api; exit 1; }",
+                  "docker compose --env-file .env.production -f compose.prod.yaml pull api frontend",
+                  "docker compose --env-file .env.production -f compose.prod.yaml up --detach --no-build --remove-orphans > /tmp/payflow-compose.log 2>&1 || { tail -n 120 /tmp/payflow-compose.log; docker compose --env-file .env.production -f compose.prod.yaml ps --all; docker compose --env-file .env.production -f compose.prod.yaml logs --no-color --tail 120 api; exit 1; }",
                   "rm --force /tmp/payflow-compose.log"
                 ]
               },
@@ -262,6 +322,52 @@ jobs:
           done
           exit 1
 
+      - name: Record deployed image manifest
+        env:
+          API_DIGEST: ${{ steps.images.outputs.api_digest }}
+          API_IMAGE: ${{ steps.images.outputs.api_image }}
+          ARTIFACT_NAME: ${{ steps.manifest_artifact.outputs.artifact_name }}
+          ARTIFACT_WORKFLOW_RUN_ID: ${{ steps.images.outputs.artifact_workflow_run_id }}
+          FRONTEND_DIGEST: ${{ steps.images.outputs.frontend_digest }}
+          FRONTEND_IMAGE: ${{ steps.images.outputs.frontend_image }}
+          PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
+        run: |
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg revisionSha "$REVISION_SHA" \
+            --arg artifactName "$ARTIFACT_NAME" \
+            --arg artifactWorkflowRunId "$ARTIFACT_WORKFLOW_RUN_ID" \
+            --arg deploymentWorkflowRunId "$GITHUB_RUN_ID" \
+            --arg deployedAt "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg publicUrl "$PUBLIC_URL" \
+            --arg apiImage "$API_IMAGE" \
+            --arg apiDigest "$API_DIGEST" \
+            --arg frontendImage "$FRONTEND_IMAGE" \
+            --arg frontendDigest "$FRONTEND_DIGEST" \
+            '{
+              schemaVersion: 1,
+              environment: $environment,
+              revisionSha: $revisionSha,
+              artifactName: $artifactName,
+              artifactWorkflowRunId: $artifactWorkflowRunId,
+              deploymentWorkflowRunId: $deploymentWorkflowRunId,
+              deployedAt: $deployedAt,
+              publicUrl: $publicUrl,
+              images: {
+                api: {reference: $apiImage, digest: $apiDigest},
+                frontend: {reference: $frontendImage, digest: $frontendDigest}
+              }
+            }' > deployment-manifest.json
+          jq empty deployment-manifest.json
+
+      - name: Upload deployed image manifest
+        uses: actions/upload-artifact@v5
+        with:
+          name: payflow-deployment-manifest-${{ env.TARGET_ENVIRONMENT }}-${{ env.REVISION_SHA }}-${{ github.run_id }}
+          path: deployment-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Start TTL after successful health check
         env:
           PUBLIC_URL: ${{ steps.infrastructure.outputs.public_url }}
@@ -283,6 +389,9 @@ jobs:
             echo "## PayFlow temporariamente publicado"
             echo ""
             echo "- URL: $PUBLIC_URL"
+            echo "- Manifesto: \`${{ steps.manifest_artifact.outputs.artifact_name }}\`"
+            echo "- API: \`${{ steps.images.outputs.api_digest }}\`"
+            echo "- Front-end: \`${{ steps.images.outputs.frontend_digest }}\`"
             echo "- Expira em: $expires_at"
             echo "- TTL iniciado somente após o health check"
           } >> "$GITHUB_STEP_SUMMARY"

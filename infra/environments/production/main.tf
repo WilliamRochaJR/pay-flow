@@ -158,6 +158,11 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy_attachment" "ecr_pull" {
+  role       = aws_iam_role.instance.name
+  policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.project_name}-ecr-pull"
+}
+
 data "aws_iam_policy_document" "runtime_configuration" {
   statement {
     sid     = "ReadEncryptedRuntimeConfiguration"

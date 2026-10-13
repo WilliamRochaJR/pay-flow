@@ -152,7 +152,11 @@ necessária para criar os primeiros ambientes isolados.
 
 O [ADR-0026](adr/0026-immutable-images-ecr-promotion-and-rollback.md) aceita o ECR como registro,
 define o digest como identidade autoritativa da imagem e estabelece rollback pelo manifesto aprovado
-anterior. A implementação permanece incremental e ainda não altera o deploy operacional atual.
+anterior. O build e o runtime já foram separados: o workflow de imagens cria um manifesto por SHA, e
+o deploy valida esse artifact, fornece `API_IMAGE` e `FRONTEND_IMAGE` ao Compose e usa somente
+`pull`/`up --no-build` na EC2. Cada execução saudável registra outro manifesto com ambiente, revisão
+e digests efetivamente implantados. Ainda falta exercitar a mesma candidata em homologação e
+produção e validar o caminho protegido de rollback.
 
 ## Custos e segurança
 

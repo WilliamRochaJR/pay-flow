@@ -9,8 +9,9 @@ dos ambientes de execução e cria:
 - uma role OIDC de escrita limitada aos dois repositórios;
 - uma managed policy de leitura para as instâncias que executarão as imagens.
 
-O módulo não constrói nem publica imagens. Também não conecta ainda a policy de leitura à EC2; essa
-ligação entra junto com o deploy por digest para não alterar o runtime antes de o novo fluxo existir.
+O módulo não constrói nem publica imagens. O root Terraform dos ambientes conecta a policy de leitura
+à role da EC2; esta fundação apenas cria e exporta a policy para manter o registro persistente separado
+dos runtimes efêmeros.
 
 ## Pré-requisitos
 
