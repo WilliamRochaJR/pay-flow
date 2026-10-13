@@ -27,7 +27,9 @@ jobs:
 
       - name: Test deployment policy
         working-directory: ${{ github.workspace }}
-        run: .github/scripts/resolve-deployment-context.test.sh
+        run: |
+          .github/scripts/resolve-deployment-context.test.sh
+          .github/scripts/resolve-artifact-context.test.sh
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -61,6 +63,16 @@ jobs:
         working-directory: infra/bootstrap/cost-controls
         env:
           TF_VAR_alert_email: ci@example.com
+        run: terraform validate
+
+      - name: Initialize artifacts bootstrap without remote backend
+        working-directory: infra/bootstrap/artifacts
+        run: terraform init -backend=false
+
+      - name: Validate artifacts bootstrap
+        working-directory: infra/bootstrap/artifacts
+        env:
+          TF_VAR_github_oidc_provider_arn: arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com
         run: terraform validate
 
       - name: Initialize production without remote backend

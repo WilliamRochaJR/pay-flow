@@ -1,0 +1,9 @@
+aws_region           = "us-east-1"
+project_name         = "payflow"
+github_repository    = "WilliamRochaJR/pay-flow"
+github_owner_id      = 38361127
+github_repository_id = 1331549119
+github_environment   = "artifacts"
+
+github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+untagged_retention_days  = 7
