@@ -148,8 +148,10 @@ da demonstração.
 M0, M1, M2 e M3 estão concluídos; o M4 permanece adiado por decisão arquitetural, o M5.1 entregou
 estorno imutável e a versão
 [`v0.6.0`](https://github.com/WilliamRochaJR/pay-flow/releases/tag/v0.6.0) inicia o M5.2. Ela acrescenta
-a fundação ECR e o workflow de imagens imutáveis sem alterar ainda o runtime da EC2, que continua
-usando Docker Compose e build local durante a publicação.
+a fundação ECR e o workflow de imagens imutáveis. O incremento seguinte passou o runtime da EC2 a
+baixar do ECR as referências por digest registradas no manifesto, sem recompilar API ou front-end
+durante a publicação. A promoção real entre homologação e produção e o rollback protegido ainda
+precisam ser exercitados para concluir o marco.
 
 ## Licença
 
