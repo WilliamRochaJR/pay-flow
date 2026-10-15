@@ -39,7 +39,7 @@ flowchart LR
     Feature[feature/*] -->|PR| Develop[develop]
     Develop --> Release[release/x.y.z]
     Release -->|PR e CI| Main[main]
-    Main --> Tag[tag vX.Y.Z]
+    Release -->|commit contido em main| Tag[tag vX.Y.Z]
     Tag --> GHRelease[GitHub Release]
     Release -->|sincronização| Develop
     Main --> Hotfix[hotfix/x.y.z]
@@ -60,10 +60,15 @@ Enquanto o produto estiver em evolução como PoC, usar versões `0.x.y`. O prim
 `frontend/package.json`. Em desenvolvimento, o Maven pode usar o sufixo `-SNAPSHOT`; a tag nunca deve
 apontar para uma versão `SNAPSHOT`.
 
-Cada release aprovado em `main` recebe uma tag anotada `vX.Y.Z` no commit exato aprovado e um GitHub
-Release com notas da versão. Tags publicadas são imutáveis: uma correção gera uma nova versão, nunca a
-movimentação ou reutilização de uma tag. Conventional Commits continua sendo a base para histórico e
-futura automação das notas, mas a primeira adoção pode manter curadoria manual.
+Cada release aprovado em `main` recebe uma tag anotada `vX.Y.Z` no commit candidato exato da branch
+`release/X.Y.Z`, depois de confirmar que ele está contido em `main`. Isso preserva a identidade do
+artefato aceito em homologação mesmo quando a integração em `main` produz um merge commit com outro
+SHA. O GitHub Release usa a mesma tag e inclui as notas da versão.
+
+Tags publicadas são imutáveis: uma correção gera uma nova versão, nunca a movimentação ou reutilização
+de uma tag. Conventional Commits continua sendo a base para histórico e futura automação das notas,
+mas a primeira adoção pode manter curadoria manual. A branch `release/X.Y.Z` permanece no remoto até a
+criação da tag e a promoção para produção.
 
 ### Ambientes e promoção
 
@@ -84,9 +89,9 @@ Os ambientes de cloud permanecem desligados por padrão. O uso de TTL e destrui�
 para todos, com tempos definidos operacionalmente em seus workflows. A existência de uma branch não
 deve, sozinha, manter recursos AWS ativos.
 
-Promoção significa selecionar uma revisão já validada. Durante a migração, os containers ainda podem
-ser reconstruídos em cada publicação; uma evolução posterior deverá produzir artefatos imutáveis uma
-vez e promovê-los entre ambientes.
+Promoção significa selecionar uma revisão já validada. As imagens são construídas uma vez para o
+commit candidato de `release/X.Y.Z`; depois da aprovação e integração em `main`, a tag do release
+aponta para esse mesmo commit e permite promover seus digests entre homologação e produção.
 
 ### Migração
 

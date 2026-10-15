@@ -27,6 +27,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve approved release candidate
+        id: candidate
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main' || {
+            echo 'Run releases only from the main branch.'
+            exit 1
+          }
+          .github/scripts/resolve-release-candidate.sh "$VERSION" "$GITHUB_SHA"
+
+      - name: Checkout approved release candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.candidate.outputs.release_sha }}
+          fetch-depth: 0
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -44,15 +62,6 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
-            echo 'Version must use MAJOR.MINOR.PATCH without a v prefix.'
-            exit 1
-          }
-          test "$GITHUB_REF" = 'refs/heads/main' || {
-            echo 'Run releases only from the main branch.'
-            exit 1
-          }
-
           root_version=$(node --print "require('./package.json').version")
           root_lock_version=$(node --print "require('./package-lock.json').packages[''].version")
           frontend_version=$(node --print "require('./frontend/package.json').version")
@@ -81,46 +90,62 @@ jobs:
             exit 1
           }
 
-      - name: Validate required checks on main commit
+      - name: Validate required checks
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
         run: |
           set -euo pipefail
-          checks=$(gh api --paginate \
-            "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100")
-          required_checks=(
+
+          validate_checks() {
+            local revision=$1
+            local label=$2
+            shift 2
+            local checks
+            checks=$(gh api \
+              "repos/$GITHUB_REPOSITORY/commits/$revision/check-runs?per_page=100")
+
+            for check_name in "$@"; do
+              conclusion=$(jq --raw-output --arg name "$check_name" '
+                [.check_runs[] | select(.name == $name)]
+                | sort_by(.completed_at)
+                | last
+                | .conclusion // "missing"
+              ' <<< "$checks")
+              test "$conclusion" = 'success' || {
+                echo "Required check '$check_name' is '$conclusion' on $label $revision."
+                exit 1
+              }
+            done
+          }
+
+          candidate_checks=(
             'Terraform'
             'Production Compose'
             'Front-end'
             'Back-end'
             'E2E'
+          )
+          main_checks=(
+            "${candidate_checks[@]}"
             'SonarQube'
             'SonarCloud Code Analysis'
           )
 
-          for check_name in "${required_checks[@]}"; do
-            conclusion=$(jq --raw-output --arg name "$check_name" '
-              [.check_runs[] | select(.name == $name)]
-              | sort_by(.completed_at)
-              | last
-              | .conclusion // "missing"
-            ' <<< "$checks")
-            test "$conclusion" = 'success' || {
-              echo "Required check '$check_name' is '$conclusion' on $GITHUB_SHA."
-              exit 1
-            }
-          done
+          validate_checks "$RELEASE_SHA" 'release candidate' "${candidate_checks[@]}"
+          validate_checks "$GITHUB_SHA" 'main commit' "${main_checks[@]}"
 
       - name: Validate tag and release availability
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
         run: |
           set -euo pipefail
           tag="v$VERSION"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             git fetch --force origin "refs/tags/$tag:refs/tags/$tag"
-            test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA" || {
+            test "$(git rev-list -n 1 "$tag")" = "$RELEASE_SHA" || {
               echo "Tag $tag already points to another commit."
               exit 1
             }
@@ -133,13 +158,14 @@ jobs:
       - name: Create annotated tag when absent
         env:
           VERSION: ${{ inputs.version }}
+          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
         run: |
           set -euo pipefail
           tag="v$VERSION"
           if ! git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git tag --annotate "$tag" --message "PayFlow $tag"
+            git tag --annotate "$tag" "$RELEASE_SHA" --message "PayFlow $tag"
             git push origin "refs/tags/$tag"
           fi
 
