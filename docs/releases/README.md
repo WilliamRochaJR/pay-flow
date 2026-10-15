@@ -11,6 +11,9 @@ branch `release/<versão>` criada a partir de `develop`.
 4. estabilizar a branch, permitindo somente correções e documentação do release;
 5. abrir Pull Request para `main` e aguardar todos os checks obrigatórios.
 
+A branch `release/X.Y.Z` deve permanecer no remoto até o workflow `Release` concluir. Ela identifica o
+commit candidato que já produziu as imagens aprovadas em homologação.
+
 ## Publicação
 
 Depois do merge e da CI verde em `main`, executar manualmente o workflow `Release` na branch `main` e
@@ -20,13 +23,20 @@ O workflow valida:
 
 - formato Semantic Versioning;
 - execução selecionada na `main`;
-- igualdade das versões do backend, raiz e frontend;
+- existência de `release/X.Y.Z` e presença de seu commit no histórico selecionado de `main`;
+- igualdade das versões do backend, raiz e frontend no commit candidato;
 - existência das notas da versão;
 - tag apontando para o commit correto, quando já existir;
-- sucesso dos checks obrigatórios no commit de `main`.
+- sucesso dos checks de construção no candidato e dos checks obrigatórios no commit de `main`.
 
-Somente então ele cria a tag anotada `vX.Y.Z` e o GitHub Release. Uma execução repetida nunca move uma
-tag existente. Se a tag já apontar para outro commit ou o GitHub Release já existir, o workflow falha.
+Somente então ele cria a tag anotada `vX.Y.Z` no commit exato de `release/X.Y.Z` e o GitHub Release. O
+merge em `main` pode ter outro SHA, especialmente quando usa merge commit, mas precisa conter o
+candidato. Como a tag e a branch de homologação identificam o mesmo commit, produção encontra o mesmo
+manifesto e promove os mesmos digests sem rebuild.
+
+Uma execução repetida nunca move uma tag existente. Se a tag já apontar para outro commit ou o GitHub
+Release já existir, o workflow falha. A branch de release pode ser removida somente depois da criação
+do GitHub Release e da promoção dos artefatos para produção.
 
 ## Sincronização
 

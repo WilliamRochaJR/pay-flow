@@ -155,8 +155,12 @@ define o digest como identidade autoritativa da imagem e estabelece rollback pel
 anterior. O build e o runtime já foram separados: o workflow de imagens cria um manifesto por SHA, e
 o deploy valida esse artifact, fornece `API_IMAGE` e `FRONTEND_IMAGE` ao Compose e usa somente
 `pull`/`up --no-build` na EC2. Cada execução saudável registra outro manifesto com ambiente, revisão
-e digests efetivamente implantados. Ainda falta exercitar a mesma candidata em homologação e
-produção e validar o caminho protegido de rollback.
+e digests efetivamente implantados.
+
+O workflow de release resolve o commit exato da branch `release/X.Y.Z`, exige que ele esteja contido
+em `main` e cria `vX.Y.Z` nesse candidato, não no merge commit de `main`. Dessa forma, homologação e
+produção consultam o manifesto do mesmo SHA. Ainda falta exercitar essa promoção completa e validar o
+caminho protegido de rollback.
 
 ## Custos e segurança
 

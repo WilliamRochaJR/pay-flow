@@ -30,6 +30,7 @@ jobs:
         run: |
           .github/scripts/resolve-deployment-context.test.sh
           .github/scripts/resolve-artifact-context.test.sh
+          .github/scripts/resolve-release-candidate.test.sh
           .github/scripts/validate-image-manifest.test.sh
 
       - name: Set up Terraform
